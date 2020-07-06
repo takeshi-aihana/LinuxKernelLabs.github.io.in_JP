@@ -13,46 +13,29 @@
 
 #### ユーザ vs Kernel
 
-「Kernel」と「ユーザ」と言う用語はオペレーティング・システムの概念の中でよく使用される単語です。
+「Kernel」と「ユーザ」はオペレーティング・システムの概念の中でよく使用される用語です。
 これらの意味はとても簡単です：
 Kernel は（ユーザよりも）高い権限で実行するオペレーティング・システムの一部であり、それに対しユーザ（空間）は通常、低い権限で実行されるアプリケーションを意味しています。
 
-しかし、これらの用語はかなり誇大な表現であり、ある状況ではかなり特殊な意味を持つ場合があります。
+しかし、これらの用語はかなり大げさな表現であり、ある状況ではかなり特殊な意味を持つ場合があります。
 
 「ユーザ・モード」と「Kernel モード」は CPU プロセッサの実行モードを指す用語です。
-Kernel モードで実行するコードは完全に[^hypervisor] CPU を制御できますが、ユーザ・モードで実行されるコードは幾つか制限があります。
+Kernel モードで実行するコードは完全に[^hypervisor]CPU を制御できますが、ユーザ・モードで実行されるコードは幾つか制限があります。
 例えば、ローカル CPU の割り込みは Kernel モードで実行中の間にのみ無効にしたり有効にすることができます。
 もし、そのような処理がユーザ・モードで実行中に行われると、例外が発生して Kernel がその例外を引き継ぎます。
 
-[^hypervisor]:プロセッサの中には
-[#hypervisor] some processors may have even higher privileges than
-                 kernel mode, e.g. a hypervisor mode, that is only
-                 accessible to code running in a hypervisor (virtual
-                 machine monitor)
+[^hypervisor]:プロセッサの中には Kernel モードよりも更に高い特権を持つものがあります。
+例えば「ハイパーバイザーモード」はハイパーバイザ（仮想マシンを監視するシステム）の中で実行中のコードにだけアクセスが可能です。
 
-User space and kernel space may refer specifically to memory
-protection or to virtual address spaces associated with either the
-kernel or user applications.
+「ユーザ空間」と「Kernel 空間」という用語は、特にメモリ保護、あるいは Kernel またはユーザのアプリケーションのいずれかに関連づけられた仮想アドレス空間を指す場合があります。
 
-Grossly simplifying, the kernel space is the memory area that is
-reserved to the kernel while user space is the memory area reserved to
-a particular user process. The kernel space is accessed protected so
-that user applications can not access it directly, while user space
-can be directly accessed from code running in kernel mode.
+かなり単純化すると、Kernel 空間は Kernel のために予約されているメモリ領域であり、それに対してユーザ空間は特定のユーザ・プロセスのために予約されたメモリ領域です。
+Kernel 空間へのアクセスは保護されているので、ユーザのアプリケーションから直接アクセスすることはできませんが、ユーザ空間には Kernel モードで実行しているコードから直接アクセスすることができます。
 
 
-Typical operating system architecture
--------------------------------------
+### 一般的なオペレーティングシステムの基本概念
 
-In the typical operating system architecture (see the figure below)
-the operating system kernel is responsible for access and sharing the
-hardware in a secure and fair manner with multiple applications.
-
-.. slide:: Typical operating system architecture
-   :level: 2
-   :inline-contents: True
-
-   .. ditaa::
+一般的なオペレーティングシステムのアーキテクチャ（下図を参照のこと）において、オペレーティングシステムの Kernel の仕事は複数のアプリケーションでハードウェアへのアクセスやリソースの共有を安全かつ公平に行えるようにすることです。
 
       +---------------+  +--------------+      +---------------+  -\
       | Application 1 |  | Application2 | ...  | Application n |   |
