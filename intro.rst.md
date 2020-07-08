@@ -39,25 +39,6 @@ Kernel 空間へのアクセスは保護されているので、ユーザのア�
 
 ![](images/Fig1-OperationgSystemArchitecture.png)
 
-      +---------------+  +--------------+      +---------------+  -\
-      | Application 1 |  | Application2 | ...  | Application n |   |
-      +---------------+  +--------------+      +---------------+   |> User space
-              |                 |                      |           |
-              v                 v                      v          -/
-      +--------------------------------------------------------+  -\
-      |                 System Call Interface                  |   |
-      +--------------------------------------------------------+   |
-              |                 |                      |           |
-              v                 v                      v           |> Kernel space
-      +--------------------------------------------------------+   |
-      |                       Kernel                           |   |
-      +--------------------------------------------------------+   |
-      |                   Device drivers                       |   |
-      +--------------------------------------------------------+  -/
-              |                 |                      |          -\
-              v                 v                      v           |> Hardware
-                                                                  -/
-
 Kernel は、一般に「システム・コール」と呼ばれるアプリケーションが発行する API 一式を提供します。
 これらの API は、その実行モードがユーザ・モードから Kernel モードに切り替わる境界線にあたるため、通常のライブラリが提供する API とは異なります。
 
@@ -74,109 +55,31 @@ Kernel のコア部はさらに論理的なサブシステム（例えばファ�
 
 ![](images/Fig2-MonolithicKernel.png)
 
-      +-----+          +-----+          +-----+
-      | App |          | App |          | App |
-      +-----+          +-----+          +-----+
-         |                |                |                 User
-      =--|-------=--------|--------=-------|-------------------=-
-         |                |                |               Kernel
-         v                v                v
-      +--------------------------------------------------------+
-      |                 System Call Interface                  |
-      +--------------------------------------------------------+
-                |                                    |
-                v                                    v
-             +-----+                              +-----+
-             |     |<---------------------------->|     |    Kernel
-             |     |<---+                +------->|     |  functions
-             +--+--+    |                |        +-----+
-                |       |                |           ^
-                |       |     +-----+    |           |
-                |+------+---->|     |<---+           |
-                ||      |     +-----+                |
-                ||      |                            |
-                vv      |                            v
-             +--++-+    |                         +-----+
-             |     |    +------------------------>|     |  Device
-             |     |<---------------------------->|     |  Drivers
-             +--+--+                              +--+--+
-                |                                    |
-                v                                    v
-      +--------------------------------------------------------+
-      |                         Hardware                       |
-      +--------------------------------------------------------+
+但し、ほとんどのモノリシック・カーネルはサブシステム間で論理的な独立を強制します。特に Kernel のコア部とデバイスドライバの間は比較的に厳格な API を使用します（但し、必ずしもそれで固定されているという訳ではない）。この API は一つのサブシステムまたは複数のデバイス・ドライバによって提供されるサービスにアクセスする際に使用します。
+もちろん、これは Kernel の実装とそのアーキテクチャによって異なります。
 
 
-但し、ほとんどのモノリシック・カーネルは論理的な独立を強制します。
+## マイクロ・カーネル（*Micro kernel*）
 
-However, most monolithic kernels do enforce a logical separation
-between subsystems especially between the core kernel and device
-drivers with relatively strict APIs (but not necessarily fixed in
-stone) that must be used to access services offered by one subsystem
-or device drivers. This, of course, depends on the particular kernel
-implementation and the kernel's architecture.
+「マイクロ・カーネル」は、Kernel の大部分がお互いに保護され、通常はユーザ空間で複数のサービスを実行している Kernel です。
+そこでは、いくつかある Kernel の重要な部分がユーザ・モードで実行されているため、Kernel モードで実行される残りのコードは非常に小さいと言うことがマイクロ・カーネルと言う名前の由来です。
 
+![](images/Fig3-MicroKernel.png)
 
-Micro kernel
-------------
-
-A micro-kernel is one where large parts of the kernel are protected
-from each-other, usually running as services in user space. Because
-significant parts of the kernel are now running in user mode, the
-remaining code that runs in kernel mode is significantly smaller, hence
-micro-kernel term.
-
-.. slide:: Micro-kernel
-   :level: 2
-   :inline-contents: True
-
-   .. ditaa::
-
-        +-----+   +--------+  +---------+ +---------+
-        | App |   | File   |  | Network | | Display |<--+
-        |     |   | Server |  | Server  | | Server  |-+ |
-        +-----+   +--------+  +---------+ +---------+ | |
-         | ^                                          | |     User
-        -|-|----------------------------------------=-|-|-------=-
-         | |                                          | |   Kernel
-         | |                                          | |
-         | |                                          | |
-         | |                                          | |
-         | | Reply  +----------------------------+    | |
-         | +--------|                            |----+ |
-         +--------->|        Micro kernel        |------+
-          Request   |  (IPC, Memory, Scheduler)  |
-                    |                            |
-                    +----------------------------+
-                                 |
-                                 v
-        +--------------------------------------------------------+
-        |                         Hardware                       |
-        +--------------------------------------------------------+
+マイクロ・カーネルのアーキテクチャにおいて、Kernel は実行中のいろいろなプロセスの間でメッセージをやり取りを可能にする十分なコードが含まれます。
+実際には、Kernel の中にスケジューラと IPC のメカニズムが実装されている他、アプリケーションと Kernel サービスとの間の保護機能を設定するための基本的なメモリ管理が実装されています。
 
 
-In a micro-kernel architecture the kernel contains just enough code
-that allows for message passing between different running
-processes. Practically that means implement the scheduler and an IPC
-mechanism in the kernel, as well as basic memory management to setup
-the protection between applications and services.
+このアーキテクチャの利点の一つは、Kernel サービスが独立しているため、一つのサービスのバグが他のサービスに影響を与ることはないと言うことです。
 
-One of the advantages of this architecture is that the services are
-isolated and hence bugs in one service won't impact other services.
+したがって、もし Kernel サービスがクラッシュしたらシステム全体に影響を与えることなく、そのサービスを再起動することができます。
+しかしながらサービスの再起動はそれに依存する全てのアプリケーションに影響を与える可能性があるので（例えばファイル・サーバがクラッシュしたら、ファイル・ディスクプリタ経由でオープンしていたファイルにアクセスした全てのアプリケーションでエラーが発生します）、実際にこれを実現するのは困難です。
 
-As such, if a service crashes we can just restart it without affecting
-the whole system. However, in practice this is difficult to achieve
-since restarting a service may affect all applications that depend on
-that service (e.g. if the file server crashes all applications with
-opened file descriptors would encounter errors when accessing them).
+このアーキテクチャの Kernel にはモジュール型のアプローチが必要で、サービス間のメモリ保護機能を提供しますが、パフォーマンスが犠牲になります。
+反対に、モノリシック・カーネルでは二つの Kernel サービスの間の簡単な関数呼び出しでも IPC とスケジューラを使う必要があるのでパフォーマンスが低下します [^minix-vs-linux]。
 
-This architecture imposes a modular approach to the kernel and offers
-memory protection between services but at a cost of performance. What
-is a simple function call between two services on monolithic kernels
-now requires going through IPC and scheduling which will incur a
-performance penalty [#minix-vs-linux]_.
 
-.. [#minix-vs-linux] https://lwn.net/Articles/220255/
+[^minix-vs-linux]:https://lwn.net/Articles/220255/
 
 
 Micro-kernels vs monolithic kernels
