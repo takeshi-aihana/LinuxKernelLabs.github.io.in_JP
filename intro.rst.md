@@ -20,7 +20,7 @@ Kernel はユーザよりも高い権限で実行するオペレーティング�
 しかし、これらの用語はちょっと大げさな表現であり、ある状況ではかなり特殊な意味を持つ場合があります。
 
 「ユーザ・モード」と「Kernel モード」は CPU プロセッサの実行モードを指す用語です。
-Kernel モードで実行するコードは完全に[^hypervisor]CPU を制御できますが、ユーザ・モードで実行されるコードは幾つか制限があります。
+Kernel モードで実行するコードは完全に[^hypervisor] CPU を制御できますが、ユーザ・モードで実行されるコードは幾つか制限があります。
 例えば、ローカル CPU の割り込みは Kernel モードで実行中の間にのみ無効にしたり有効にすることができます。
 もし、そのような処理がユーザ・モードで実行中に行われると、例外が発生して Kernel がその例外を引き継ぎます。
 
@@ -62,7 +62,7 @@ Kernel のコア部はさらに論理的なサブシステム（例えばファ�
 ## マイクロ・カーネル（*Micro kernel*）
 
 「マイクロ・カーネル」は、Kernel の大部分がお互いに保護され、通常はユーザ空間で複数のサービスを実行している Kernel です。
-そこでは、いくつかある Kernel の重要な部分がユーザ・モードで実行されているため、Kernel モードで実行される残りのコードは非常に小さいと言うことがマイクロ・カーネルと言う名前の由来です。
+そこでは、いくつかある Kernel の重要な部分がユーザ・モードで実行されているため、Kernel モードで実行される残りのコードは非常に小さいと言うことがマイクロ・カーネルと言う名前の由来となります。
 
 ![](images/Fig3-MicroKernel.png)
 
@@ -76,48 +76,31 @@ Kernel のコア部はさらに論理的なサブシステム（例えばファ�
 しかしながらサービスの再起動はそれに依存する全てのアプリケーションに影響を与える可能性があるので（例えばファイル・サーバがクラッシュしたら、ファイル・ディスクプリタ経由でオープンしていたファイルにアクセスした全てのアプリケーションでエラーが発生します）、実際にこれを実現するのは困難です。
 
 このアーキテクチャの Kernel にはモジュール型のアプローチが必要で、サービス間のメモリ保護機能を提供しますが、パフォーマンスが犠牲になります。
-反対に、モノリシック・カーネルでは二つの Kernel サービスの間の簡単な関数呼び出しでも IPC とスケジューラを使う必要があるのでパフォーマンスが低下します [^minix-vs-linux]。
+反対に、モノリシック・カーネルでは二つの Kernel サービスの間の簡単な関数呼び出しでも IPC とスケジューラを使う必要があるのでパフォーマンスが低下します[^minix-vs-linux]。
 
 
 [^minix-vs-linux]:https://lwn.net/Articles/220255/
 
 
-Micro-kernels vs monolithic kernels
------------------------------------
+## マイクロ・カーネル vs モノリシック・カーネル
 
-Advocates of micro-kernels often suggest that micro-kernel are
-superior because of the modular design a micro-kernel
-enforces. However, monolithic kernels can also be modular and there
-are several approaches that modern monolithic kernels use toward this
-goal:
+よくマイクロ・カーネルの擁護者は、モジュール型の設計手法を採用しているマイクロ・カーネルの方が優れていると主張します。
+しかし、モノリシック・カーネルもモジュール化に対応することが可能で、これに関しては最新のモノリシック・カーネルを使用すると言う解決方法がいくつかあります：
 
-.. slide:: Monolithic kernels *can* be modular
-   :level: 2
-   :inline-contents: True
+   * モジュール化するコンポーネントはコンパイル時に有効または無効にできる
 
-   * Components can enabled or disabled at compile time
+   * 実行中にロード可能な Kernel モジュールをサポートする
 
-   * Support of loadable kernel modules (at runtime)
+   * Kernel を論理的で独立したサブシステムとして扱う
 
-   * Organize the kernel in logical, independent subsystems
+   * インタフェースは厳密であるが、パフォーマンスのオーバーヘッドが少ないマクロやインライン関数、そして関数のポインタを使う
 
-   * Strict interfaces but with low performance overhead: macros,
-     inline functions, function pointers
+かってモノリシック・カーネルとマイクロ・カーネル（例えば Windows や Mac OS X）の間にハイブリッド・カーネルなるオペレーティング・システムの種類がありました。
+しかし、これらのオペレーティング・システムでは典型的なモノリシック・サービスが全て Kernel モードで動くので、モノリシック・カーネル以外にそれらのサービスを qualify するメリットは殆どありません。
 
 
-There is a class of operating systems that (used to) claim to be
-hybrid kernels, in between monolithic and micro-kernels (e.g. Windows,
-Mac OS X). However, since all of the typical monolithic services run
-in kernel-mode in these operating systems, there is little merit to
-qualify them other then monolithic kernels.
-
-.. slide:: "Hybrid" kernels
-   :level: 2
-   :inline-contents: True
-
-   Many operating systems and kernel experts have dismissed the label
-   as meaningless, and just marketing. Linus Torvalds said of this
-   issue:
+多くのオペレーティング・システムと Kernel の専門家は、このレッテルには意味はなく、ただの商用向けの売り文句だとしてはねつけています。
+この件について Linus Torvalds 氏は次のように語っています：
 
    "As to the whole 'hybrid kernel' thing - it's just marketing. It's
    'oh, those microkernels had good PR, how can we try to get good PR
