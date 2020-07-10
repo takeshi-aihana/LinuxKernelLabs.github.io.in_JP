@@ -102,40 +102,28 @@ Kernel のコア部はさらに論理的なサブシステム（例えばファ�
 多くのオペレーティング・システムと Kernel の専門家は、このレッテルには意味はなく、ただの商用向けの売り文句だとしてはねつけています。
 この件について Linus Torvalds 氏は次のように語っています：
 
-   "As to the whole 'hybrid kernel' thing - it's just marketing. It's
-   'oh, those microkernels had good PR, how can we try to get good PR
-   for our working kernel? Oh, I know, let's use a cool name and try
-   to imply that it has all the PR advantages that that other system
-   has'."
+> 「ハイブリッド・カーネル」そのものは - ただの「マーケティング用語」です。
+> 「そうそう、マイクロ・カーネルには優れた広告塔がありました。我々が作業している Kernel でも優れた広告塔を持つにはどうすればよいでしょう？ ああ、こんなのはどうでしょう。かっこいい名前を付けて、他のシステムが持つ広告塔よりも全て優れてますよと言うことを間接的に伝えてみるというのは。」といった感じです。
 
 
-Address space
--------------
+## アドレス空間
 
-.. slide:: Address space
-   :level: 2
+   * 物理アドレス空間
 
-   * Physical address space
+     * RAM と周辺機器のメモリ
 
-     * RAM and peripheral memory
+   * 仮想アドレス空間
 
-   * Virtual address space
+     * CPU がメモリを認識する方法 (プロテクト・モード / ページング・モード の時)
 
-     * How the CPU sees the memory (when in protected / paging mode)
+     * プロセスのアドレス空間
 
-     * Process address space
+     * Kernel のアドレス空間
 
-     * Kernel address space
+「アドレス空間」は、さまざまなコンテキストで異なる意味を持つことができる多重定義な用語の一つです。
 
-
-The address space term is an overload term that can have different
-meanings in different contexts.
-
-The physical address space refers to the way the RAM and device
-memories are visible on the memory bus. For example, on 32bit Intel
-architecture, it is common to have the RAM mapped into the lower
-physical address space while the graphics card memory is mapped high
-in the physical address space.
+「物理アドレス空間」は RAM とデバイスのメモリがメモリ・バス上で認識される方法に言及します。
+例えば、32ビットの Intel アーキテクチャの場合、一般的に物理メモリの低位の空間に RAM がマップされるのに対し、グラフィクス・カードのメモリは物理メモリの高位の空間にマップされます。
 
 The virtual address space (or sometimes just address space) refers to
 the way the CPU sees the memory when the virtual memory module is
