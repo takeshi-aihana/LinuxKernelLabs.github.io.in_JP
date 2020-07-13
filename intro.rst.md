@@ -120,32 +120,24 @@ Kernel のコア部はさらに論理的なサブシステム（例えばファ�
 
      * Kernel のアドレス空間
 
-「アドレス空間」は、さまざまなコンテキストで異なる意味を持つことができる多重定義な用語の一つです。
+「アドレス空間」は、さまざまなコンテキストで異なる意味を持つ多重定義が可能な用語です。
 
-「物理アドレス空間」は RAM とデバイスのメモリがメモリ・バス上で認識される方法に言及します。
+「物理アドレス空間」はメモリ・バス上にある RAM とデバイスのメモリの見え方を反映しています。
 例えば、32ビットの Intel アーキテクチャの場合、一般的に物理メモリの低位の空間に RAM がマップされるのに対し、グラフィクス・カードのメモリは物理メモリの高位の空間にマップされます。
 
-The virtual address space (or sometimes just address space) refers to
-the way the CPU sees the memory when the virtual memory module is
-activated (sometime called protected mode or paging enabled). The
-kernel is responsible of setting up a mapping that creates a virtual
-address space in which areas of this space are mapped to certain
-physical memory areas.
+「仮想メモリ空間」（または単に「アドレス空間」）は仮想メモリ・モジュールが動きだした（ときどき「プロテクト・モードが有効になった」または「ページングが有効になった」）時に CPU から見たメモリの見え方を反映したものになっています。
+Kernel は、仮想メモリ空間の中から任意のメモリ領域を確保して、特定の物理メモリ領域に投影する「マッピング」の設定を担当しています。
 
-Related to the virtual address space there are two other terms that
-are often used: process (address) space and kernel (address) space.
+仮想アドレス空間に関連してよく使用する別の用語が二つあります： プロセス（アドレス）空間と Kernel（アドレス）空間です。
 
-The process space is (part of) the virtual address space associated
-with a process. It is the "memory view" of processes. It is a
-continuous area that starts at zero. Where the process's address space
-ends depends on the implementation and architecture.
+「プロセス空間」は任意のプロセスに関連づけられた仮想アドレス空間（の一部）です。
+プロセスの「メモリ表示」です。
+0から始まる連続した領域です。
+プロセスのアドレス空間がどこで終わるかは実装とアーキテクチャによって異なります。
 
-The kernel space is the "memory view" of the code that runs in kernel
-mode.
+「Kernel 空間」は Kernel モードで動作するコードの「メモリ表示」です。
 
-
-User and kernel sharing the virtual address space
--------------------------------------------------
+## ユーザと Kernel が共有する仮想アドレス空間
 
 A typical implementation for user and kernel spaces is one where the
 virtual address space is shared between user processes and the kernel.
@@ -155,11 +147,10 @@ while user space at the bottom. In order to prevent the user processes
 from accessing kernel space, the kernel creates mappings that prevent
 access to the kernel space from user mode.
 
-.. slide:: User and kernel sharing the virtual address space
-   :level: 2
-   :inline-contents: True
+![](images/Fig4-32bit-VirtualAddressSpace.png)
 
-   .. ditaa::
+
+
 
                   +-------------------+  ^
       0xFFFFFFFF  |                   |  |
