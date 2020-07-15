@@ -217,26 +217,22 @@ Linux の場合は、特にこのルールに厳格です（必要に応じて�
 
 このカーネル・スタックのサイズは小さい（4KB〜12KB）ので、カーネル開発者はスタックに巨大な構造体を確保したり、無限の再帰呼び出しをしないように注意する必要があります。
 
-## 汎用性 (*Portability*)
+## 移植性 (*Portability*)
 
-In order to increase portability across various architectures and
-hardware configurations, modern kernels are organized as follows at the
-top level:
+いろいろなアーキテクチャやハードウェア構成に対する移植性を高めるために、最新のカーネルのトップレベルは次のような構成になっています：
 
-   * Architecture and machine specific code (C & ASM)
+   * アーキテクチャとマシン専用のコード（Ｃ言語とアセンブラ）
 
-   * Independent architecture code (C):
+   * アーキテクチャに依存しないコード（Ｃ言語）：
 
-     * kernel core (further split in multiple subsystems)
+     * カーネルのコア部（さらに複数のサブシステムに分割される）
 
-     * device drivers
+     * デバイス・ドライバ
 
-This makes it easier to reuse code as much as possible between
-different architectures and machine configurations.
+このような対応によりアーキテクチャやマシン構成が異なる場合でも可能な範囲でコードの再利用が容易になります。
 
 
-Asymmetric MultiProcessing (ASMP)
----------------------------------
+## 非対称型マルチプロセッシング（*Asymmetric MultiProcessing*）
 
 Asymmetric MultiProcessing (ASMP) is a way of supporting multiple
 processors (cores) by a kernel, where a processor is dedicated to the
