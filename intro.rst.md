@@ -206,37 +206,22 @@ Linux の場合は、特にこのルールに厳格です（必要に応じて�
 但し、プリエンプティブではないカーネルでもプリエンプティブ・マルチタスクをサポートしている可能性があるので注意して下さい。
 
 
-## Pageable kernel memory
+## ページングが可能なカーネルのメモリ
 
-   A kernel supports pageable kernel memory if parts of kernel memory
-   (code, data, stack or dynamically allocated memory) can be swapped
-   to disk.
+カーネルが使用するメモリの一部（コードやデータ、スタックまたは動的に確保するヒープ）をディスクにスワップすることが可能な場合、そのカーネルはページング可能なカーネル・メモリをサポートしていると言います。
 
-Kernel stack
-------------
 
-.. slide:: Kernel stack
-   :level: 2
-   :inline-contents: True
+## カーネルのスタック
 
-   Each process has a kernel stack that is used to maintain the
-   function call chain and local variables state while it is executing
-   in kernel mode, as a result of a system call.
+プロセスはそれぞれ、システム・コールの結果としてカーネル・モードで処理している間、関数を呼び出した順番やローカル変数の状態を記憶しておくための「カーネル・スタック」を持っています。
 
-   The kernel stack is small (4KB - 12 KB) so the kernel developer has
-   to avoid allocating large structures on stack or recursive calls
-   that are not properly bounded.
+このカーネル・スタックのサイズは小さい（4KB〜12KB）ので、カーネル開発者はスタックに巨大な構造体を確保したり、無限の再帰呼び出しをしないように注意する必要があります。
 
-Portability
------------
+## 汎用性 (*Portability*)
 
 In order to increase portability across various architectures and
 hardware configurations, modern kernels are organized as follows at the
 top level:
-
-.. slide:: Portability
-   :level: 2
-   :inline-contents: True
 
    * Architecture and machine specific code (C & ASM)
 
