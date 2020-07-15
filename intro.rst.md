@@ -33,9 +33,9 @@
 カーネル空間へのアクセスは保護されているので、ユーザのアプリケーションから直接アクセスすることはできませんが、ユーザ空間にはカーネル・モードで実行しているコードから直接アクセスすることができます。
 
 
-### 一般的なオペレーティングシステムの基本概念
+### 一般的なオペレーティング・システムの基本概念
 
-一般的なオペレーティングシステムのアーキテクチャ（下図を参照のこと）において、オペレーティングシステムのカーネルの仕事は複数のアプリケーションの間でハードウェアへのアクセスやリソースの共有を安全かつ公平に行えるようにすることです。
+一般的なオペレーティング・システムのアーキテクチャ（下図を参照のこと）において、オペレーティング・システムのカーネルの仕事は複数のアプリケーションの間でハードウェアへのアクセスやリソースの共有を安全かつ公平に行えるようにすることです。
 
 ![](images/Fig1-OperationgSystemArchitecture.png)
 
@@ -48,6 +48,7 @@ Linux の場合は、特にこのルールに厳格です（必要に応じて�
 カーネルのコードそのものは、論理的にカーネルのコア部とデバイス・ドライバにそれぞれ分離が可能です。
 デバイス・ドライバのコードは特定のデバイスへのアクセスを担当し、カーネルのコア部のコードは汎用的なコードです。
 カーネルのコア部はさらに論理的なサブシステム（例えばファイルへのアクセス、ネットワーク、プロセス管理など）に分離できます。
+
 
 ### モノリシック・カーネル（*Monolithic kernel*）
 
@@ -142,7 +143,7 @@ Linux の場合は、特にこのルールに厳格です（必要に応じて�
 
 ユーザ空間とカーネル空間で特徴ある実装は、仮想アドレス空間をユーザ空間のプロセスとカーネルとの間で共有する部分です。
 
-この場合、カーネル空間はアドレス空間の一番上に位置し、ユーザ空間は反対に一番に下に置かれます。
+この場合、カーネル空間はアドレス空間の一番上に位置し、反対にユーザ空間は一番に下に置かれます。
 ユーザ空間のプロセスがカーネル空間にアクセスできないようにするために、カーネルがユーザ・モードからカーネル・モードにアクセスできないようなマッピングを生成します。
 
 ![](images/Fig4-32bit-VirtualAddressSpace.png)
@@ -163,65 +164,49 @@ Linux の場合は、特にこのルールに厳格です（必要に応じて�
 
      * 常にカーネル・モードで実行する
 
-カーネルの最も重要な仕事の一つがいろいろな「割り込み」を提供し、効率よく「割り込み」を提供するというものです。
-これは、特別に実行する専用のコンテキストが関連づけられているほど、とても重要です。
+カーネルの最も重要な仕事の一つがいろいろな「割り込み」の提供で、効率よく「割り込み」を提供するというものです。
+これは特別に実行する専用のコンテキストが関連づけられているほど、とても重要です。
 
 割り込みが発生した結果としてカーネルが何かを実行する際は「割り込みのコンテキスト」の中で実行されます。
 これには割り込みハンドラが含まれていますが、これに限定されることはなく、他にも割り込みモードで実行される特別なソフトウェアの概念があります。
-割り込みのコンテキストの中で実行されるコードは常にカーネル・モードで動いていますが、カーネル・ハッカーが注意しなければならないお決まりの制限がいくつかあります（例えば、処理をブロックするような関数を呼び出さないこと、またはユーザ空間にアクセスしないこと）。
+割り込みのコンテキストの中で実行されるコードは常にカーネル・モードで処理されますが、カーネル・ハッカーが注意しなければならないお決まりの制限がいくつかあります（例えば処理をブロックするような関数を呼び出さないこと、またはユーザ空間にアクセスしないこと）。
 
 割り込みのコンテキストに対して、プロセスのコンテキストというものがあります。
 プロセスのコンテキストの中で実行されるコードはユーザ・モード（アプリケーションの実行）またはカーネル・モード（システム・コールの実行）で処理されます。
 
+
 ## マルチ・タスク
 
-   * An OS that supports the "simultaneous" execution of multiple processes
+   * 複数のプロセスの「同時」実行をサポートした OS
 
-   * Implemented by fast switching between running processes to allow
-     the user to interact with each program
+   * 実行中のプロセスの間を高速に切り替える実装が、ユーザと各種プログラムとの対話を可能にしている
 
-   * Implementation:
+   * 実装:
 
-     * Cooperative
+     * 協調（*cooperative*）
 
-     * Preemptive
+     * プリエンプティブ（*preemptive*）
 
-Multitasking is the ability of the operating system to
-"simultaneously" execute multiple programs. It does so by quickly
-switching between running processes.
+「マルチタスク」とはオペレーティング・システムが複数のプログラムを「同時に」実行する能力です。
+これは、実行中のプロセスを素早く切り替えることで実現しています。
 
-Cooperative multitasking requires the programs to cooperate to achieve
-multitasking. A program will run and relinquish CPU control back
-to the OS, which will then schedule another program.
+「協調的なマルチタスク」にはマルチタスクを達成するために協力するプログラムが必要になります。
+任意のプログラムが実行中に、自発的に CPU 制御を OS に戻すことで、別のプログラムに CPU 制御が割り当てられます。
 
-With preemptive multitasking the kernel will enforce strict limits for
-each process, so that all processes have a fair chance of
-running. Each process is allowed to run a time slice (e.g. 100ms)
-after which, if it is still running, it is forcefully preempted and
-another task is scheduled.
-
-Preemptive kernel
------------------
-
-.. slide:: Preemptive kernel
-   :level: 2
-   :inline-contents: True
-
-   Preemptive multitasking and preemptive kernels are different terms.
-
-   A kernel is preemptive if a process can be preempted while running
-   in kernel mode.
-
-   However, note that non-preemptive kernels may support preemptive
-   multitasking.
+「プリエンプティブ・マルチタスク」の能力を持つカーネルは各プロセスに厳格な制限を課すことで、全てのプロセスは公平に実行する機会が与えられます。
+各プロセスは任意のタイムスライスの期間（例えば 100ms）は実行できるが、その後も実行中だと、強制的にプリエンプト（実行が中断）されて、他のタスクに CPU 制御が渡されるようにスケジューラが動きます。
 
 
-Pageable kernel memory
-----------------------
+## プリエンプティブ・カーネル
 
-.. slide:: Pageable kernel memory
-   :level: 2
-   :inline-contents: True
+「プリエンプティブ・マルチタスク」と「プリエンプティブ・カーネル」は別の用語です。
+
+カーネル・モードで実行している最中に任意のプロセスがプリエンプトされたら、そのカーネルはプリエンプティブ・カーネルです。
+
+但し、プリエンプティブではないカーネルでもプリエンプティブ・マルチタスクをサポートしている可能性があるので注意して下さい。
+
+
+## Pageable kernel memory
 
    A kernel supports pageable kernel memory if parts of kernel memory
    (code, data, stack or dynamically allocated memory) can be swapped
