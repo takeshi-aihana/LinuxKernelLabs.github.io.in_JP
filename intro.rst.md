@@ -270,38 +270,31 @@ SMP をサポートするためにカーネルは「同期プリミティブ（�
 ### Linux カーネルの概要
 
 
-## Linux の開発モデル
+#### Linux の開発モデル
 
-   * Open source, GPLv2 License
+   * オープンソース、GPLv2 ライセンス
 
-   * Contributors: companies, academia and independent developers
+   * 貢献者：企業、学生、個人（独立系の開発者）
 
-   * Development cycle: 3 – 4 months which consists of a 1 - 2 week
-     merge window followed by bug fixing
+   * 開発サイクル：3 〜 4 ヶ月（バグ修正に続いて 1 〜 2 週間のマージ・ウィンドウ[^merge-window] を含む）
 
-   * Features are only allowed in the merge window
+[^merge-window]:リリース版を出したら、次のバージョンのリリース候補（RC）版が作成される二週間程度の間に重要な変更をマージして、その後のリリース候補を安定化のために利用すると言う仕組み。
 
-   * After the merge window a release candidate is done on a weekly
-     basis (rc1, rc2, etc.)
+   * 新機能はマージ・ウィンドウで許可されたものだけ
 
-The Linux kernel is one the largest open source projects in the world
-with thousands of developers contributing code and millions of lines of
-code changed for each release.
+   * マージ・ウィンドウ後のリリース候補（RC）版は週単位でリリースされる（-rc1、-rc2 など)
 
-It is distributed under the GPLv2 license, which simply put,
-requires that any modification of the kernel done on software that is
-shipped to customer should be made available to them (the customers),
-although in practice most companies make the source code publicly
-available.
 
-There are many companies (often competing) that contribute code to the
-Linux kernel as well as people from academia and independent
-developers.
+Linux カーネル開発は世界最大のオープンソース・プロジェクトの一つであり、何千人もの開発者がコードを提供し、リリースするごとに何百万行ものコードが変更されています。
 
-The current development model is based on doing releases at fixed
-intervals of time (usually 3 - 4 months). New features are merged into
-the kernel during a one or two week merge window. After the merge
-window, a release candidate is done on a weekly basis (rc1, rc2, etc.)
+Linux カーネルは GPLv2 ライセンスで配布されています。
+簡単に言うと、顧客に出荷されるソフトウェアで行われたカーネルの変更はすべて顧客でも利用できるようにする必要があり、実際に企業のほとんどが（自らが変更した）ソースコードを公開しています。
+
+Linux カーネル開発にコードを提供しているのは大学や個人（独立系の開発者）だけではなく、たくさんの企業（その多くは競合他社）が存在します。
+
+現在の開発モデルは、基本的に一定の期間（通常は 3 〜 4 ヶ月）でリリースしていくというものです。
+新しい機能は 1 〜 2 週間に渡って実施されるマージ・ウィンドウ中にカーネルの中にマージされます。
+マージ・ウインドウの後には、リリース候補が週単位でリリースされます（-rc1、-rc2 など）。
 
 
 Maintainer hierarchy
