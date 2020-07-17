@@ -21,13 +21,13 @@
 
 「ユーザ・モード」と「カーネル・モード」は CPU プロセッサの実行モードを指す用語です。
 カーネル・モードで実行するコードは完全に[^hypervisor] CPU を制御できますが、ユーザ・モードで実行されるコードは幾つか制限があります。
-例えば、ローカル CPU の割り込みはカーネル・モードで実行中の間にのみ無効にしたり有効にすることができます。
-もし、そのような処理がユーザ・モードで実行中に行われると、例外が発生してカーネルがその例外を引き継ぎます。
+例えば CPU の割り込みはカーネル・モードで実行中の間にのみ無効にしたり有効にすることができます。
+もし、そのような処理がユーザ・モードで行われたら例外が発生し、カーネルがその例外を引き継ぎます。
 
 [^hypervisor]:プロセッサの中にはカーネル・モードよりも更に高い特権を持つものがあります。
 例えば「ハイパーバイザ・モード」はハイパーバイザ（仮想マシンを監視するシステム）で実行しているコードにだけアクセスが可能です。
 
-「ユーザ空間」と「カーネル空間」という用語は、特にメモリ保護、あるいはカーネルまたはユーザのアプリケーションのいずれかに関連づけられている仮想アドレス空間を指す場合があります。
+「ユーザ空間」と「カーネル空間」という用語は特にメモリ保護、またはカーネルまたはユーザのアプリケーションのいずれかに関連づけられている仮想アドレス空間を指す場合があります。
 
 説明をかなり単純化すると、カーネル空間はカーネルのために予約されているメモリ領域であり、それに対してユーザ空間は特定のユーザ・プロセスのために予約されたメモリ領域です。
 カーネル空間へのアクセスは保護されているので、ユーザのアプリケーションから直接アクセスすることはできませんが、ユーザ空間にはカーネル・モードで実行しているコードから直接アクセスすることができます。
@@ -35,7 +35,7 @@
 
 #### 一般的なオペレーティング・システムの基本概念
 
-一般的なオペレーティング・システムのアーキテクチャ（下図を参照のこと）において、オペレーティング・システムのカーネルの仕事は複数のアプリケーションの間でハードウェアへのアクセスやリソースの共有を安全かつ公平に行えるようにすることです。
+一般的なオペレーティング・システムのアーキテクチャ（下図を参照のこと）において、カーネルの仕事は複数のアプリケーションの間でハードウェアへのアクセスやリソースの共有を安全かつ公平に行えるようにすることです。
 
 ![](images/Fig1-OperationgSystemArchitecture.png)
 
@@ -70,10 +70,9 @@ Linux の場合は、特にこのルールに厳格です（必要に応じて�
 マイクロ・カーネルのアーキテクチャにおいて、カーネルは実行中のいろいろなプロセスの間でメッセージをやり取りを可能にする十分なコードが含まれます。
 実際には、カーネルの中にスケジューラと IPC のメカニズムが実装されている他、アプリケーションとカーネルのサービスとの間の保護機能を設定するための基本的なメモリ管理が実装されています。
 
-
 このアーキテクチャの利点の一つは、カーネルのサービスが独立しているため、一つのサービスのバグが他のサービスに影響を与ることはないと言うことです。
 
-したがって、もしカーネルのサービスがクラッシュしたらシステム全体に影響を与えることなく、そのサービスを再起動することができます。
+したがって、もし何かサービスがクラッシュしてもシステム全体に影響を与えることなく、そのサービスを再起動することができます。
 しかしながらサービスの再起動はそれに依存する全てのアプリケーションに影響を与える可能性があるので（例えばファイル・サーバがクラッシュしたら、ファイル・ディスクプリタ経由でオープンしていたファイルにアクセスした全てのアプリケーションでエラーが発生します）、実際にこれを実現するのは困難です。
 
 このアーキテクチャのカーネルにはモジュール型のアプローチが必要で、サービス間のメモリ保護機能を提供しますが、パフォーマンスが犠牲になります。
@@ -97,7 +96,7 @@ Linux の場合は、特にこのルールに厳格です（必要に応じて�
    * インタフェースは厳密であるが、パフォーマンスのオーバーヘッドが少ないマクロやインライン関数、そして関数のポインタを使う
 
 かってモノリシック・カーネルとマイクロ・カーネル（例えば Windows や Mac OS X）の間にハイブリッド・カーネルなるオペレーティング・システムの種類がありました。
-しかし、これらのオペレーティング・システムでは典型的なモノリシック・サービスが全てカーネル・モードで動くので、モノリシック・カーネル以外にそれらのサービスを qualify するメリットは殆どありません。
+しかし、これらのオペレーティング・システムでは典型的なモノリシック・サービスが全てカーネル・モードで動くので、モノリシック・カーネル以外にそれらのサービスを動かせるようにするメリットは殆どありません。
 
 
 多くのオペレーティング・システムとカーネルの専門家たちは、このレッテルには意味はなく、ただの商用向けの売り文句だとしてはねつけています。
@@ -284,7 +283,6 @@ SMP をサポートするためにカーネルは「同期プリミティブ（�
 
    * マージ・ウィンドウ後のリリース候補（RC）版は週単位でリリースされる（-rc1、-rc2 など)
 
-
 Linux カーネル開発は世界最大のオープンソース・プロジェクトの一つであり、何千人もの開発者がコードを提供し、リリースするごとに何百万行ものコードが変更されています。
 
 Linux カーネルは GPLv2 ライセンスで配布されています。
@@ -297,116 +295,51 @@ Linux カーネル開発にコードを提供しているのは大学生や個�
 マージ・ウィンドウが終わると、リリース候補が週単位でリリースされます（-rc1、-rc2 など）。
 
 
-Maintainer hierarchy
---------------------
+#### メンテナーの階層
 
-In order to scale the development process, Linux uses a hierarchical
-maintainership model:
+開発プロセスを見積もるために、Linux は階層型のメンテナス・モデルを採用しています：
 
-.. slide:: Maintainer hierarchy
-   :level: 2
-   :inline-contents: True
+   * Linus Torvalds 氏は Linux カーネルのメンテナであり、サブシステムのメンテナからの Pull リクエスト[^pull-request] をマージする
 
-   * Linus Torvalds is the maintainer of the Linux kernel and merges pull
-     requests from subsystem maintainers
+[^pull-request]:コードの変更をメンテナに通知しマージを依頼する仕組み。
 
-   * Each subsystem has one or more maintainers that accept patches or
-     pull requests from developers or device driver maintainers
+   * 各サブシステムには一人以上のメンテナがおり、開発者やデバイス・ドライバのメンテナから提供されたパッチや Pull リクエストを受け付ける
 
-   * Each maintainer has its own git tree, e.g.:
+   * メンテナはそれぞれ自分の git ツリーを持っており、代表的なものとしては：
 
-     * Linux Torvalds: git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+     * Linux Torvalds 氏 : [git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git](git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git)
 
-     * David Miller (networking): git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git/
+     * David Miller 氏（ネットワーク担当）: [git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git/](git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git/)
 
-   * Each subsystem may maintain a -next tree where developers can submit
-     patches for the next merge window
+   * 各サブシステムは ``-next`` ツリーを管理し、開発者が次のマージ・ウィンドウのパッチを提出できるようにする
 
-Since the merge window is only a maximum of two weeks, most of the
-maintainers have a -next tree where they accept new features from
-developers or maintainers downstream while even when the merge window
-is closed.
+マージ・ウィンドウは最大で2週間しかないので、ほとんどのメンテナは ``-next`` ツリーを立ち上げ、マージ・ウィンドウが終了した後も開発者や下流のメンテナから提出された新しい機能の Pull リクエストを受け付けています。
 
-Note that bug fixes are accepted even outside merge window in the
-maintainer's tree from where they are periodically pulled by the
-upstream maintainer regularly, for every release candidate.
+バグの修正はマージ・ウィンドウが終わった後でもメンテナのツリーで受け付けていることに注意して下さい。これらのパッチはリリース候補が作成される度に、定期的に上流のメンテナに Pull される仕組みです。
 
+#### Linux のソース・コードの配置
 
+![](images/Fig7-LinuxSourceCodeLayout.png)
 
-Linux source code layout
--------------------------
+これらは Linux のソース・コードのトップレベルにあるフォルダの一覧です：
 
-.. slide:: Linux source code layout
-   :level: 2
-   :inline-contents: True
+* ``arch`` - このフォルダにはアーキテクチャ特有のコードが含まれる ; 各アーキテクチャはそれぞれ専用のサブ・フォルダ（例えば ``arm``、``arm64``、``x86`` など）の下で実装されている
 
-   .. ditaa::
+* ``block`` - このフォルダにはいろいろなブロック・デバイスからデータの読み書きを処理するブロック・サブシステムのコードが含まれる: 具体的には、ブロック I/O 要求の作成、I/O 要求のスケジューリング（いくつかの I/O スケジューリングが利用できる）、I/O 要求のマージ、そして I/O 要求を I/O スタックを介してブロック・デバイスのドライバに渡す
 
-      +-------+
-      | linux |
-      +-+-----+
-        |
-        +------+--------+---------+---------+--------------+--------------+
-        |      |        |         |         |              |              |
-        |      v        v         v         v              v              v
-        |  +------+ +-------+ +-------+ +--------+ +---------------+ +---------+
-        |  | arch | | block | | certs | | crypto | | Documentation | | drivers |
-        |  +------+ +-------+ +-------+ +--------+ +---------------+ +---------+
-        |
-        +-------+----------+--------+---------+--------+--------+---------+
-        |       |          |        |         |        |        |         |
-        |       v          v        v         v        v        v         v
-        |  +----------+ +----+ +---------+ +------+ +-----+ +--------+ +-----+
-        |  | firmware | | fs | | include | | init | | ipc | | kernel | | lib |
-        |  +----------+ +----+ +---------+ +------+ +-----+ +--------+ +-----+
-        |
-        +-----+------+---------+------------+------------+------------+
-        |     |      |         |            |            |            |
-        |     v      v         v            v            v            v
-        |  +----+ +-----+ +---------+ +---------+  +----------+ +-------+
-        |  | mm | | net | | samples | | scripts |  | security | | sound |
-        |  +----+ +-----+ +---------+ +---------+  +----------+ +-------+
-        |
-        +------+--------+--------+
-               |        |        |
-               v        v        v
-           +-------+ +-----+ +------+
-           | tools | | usr | | virt |
-           +-------+ +-----+ +------+
+* ``certs`` - フォルダは証明書を使って署名を確認するための仕組みの実装が含まれる
 
+* ``crypto`` - このフォルダには、いろいろな種類の暗号化アルゴリズムの実装と、その類の暗号化アルゴリズムをハードウェアで解除することができるフレームワークが含まれる
 
-These are the top level of the Linux source code folders:
+* ``Documentation`` - このフォルダには、いろいろなサブシステム、Linux カーネルのコマンド・ライン・オプション、``sysfs`` ファイルの説明、そしてフォーマットやデバイス・ツリーのバインディング（サポートしているデバイス・ツリーのノードとフォーマット）などのドキュメントが含まれる
 
-* arch - contains architecture specific code; each architecture is
-  implemented in a specific sub-folder (e.g. arm, arm64, x86)
+* ``drivers`` - このフォルダには、いろいろな種類のデバイス・ドライバの他に、Linux のドライバ・モデルの実装（ドライバ、デバイス・バス、そして接続方法について記述した抽象化モデル）が含まれる
 
-* block - contains the block subsystem code that deals with reading
-  and writing data from block devices: creating block I/O requests,
-  scheduling them (there are several I/O schedulers available),
-  merging requests, and passing them down through the I/O stack to the
-  block device drivers
+* ``firmware`` - このフォルダには、いろいろな種類のデバイス・ドライバから利用される 2進または16進のファームウェアのファイルが含まれる
 
-* certs - implements support for signature checking using certificates
+* ``fs`` - このフォルダには Linux の仮想ファイルシステム・スイッチ（ファイルシステムの汎用コード）といろいろな種類のファイルシステムのドライバが含まれる
 
-* crypto - software implementation of various cryptography algorithms
-  as well as a framework that allows offloading such algorithms in
-  hardware
-
-* Documentation - documentation for various subsystems, Linux kernel
-  command line options, description for sysfs files and format, device
-  tree bindings (supported device tree nodes and format)
-
-* drivers - driver for various devices as well as the Linux driver
-  model implementation (an abstraction that describes drivers, devices
-  buses and the way they are connected)
-
-* firmware - binary or hex firmware files that are used by various
-  device drivers
-
-* fs - home of the Virtual Filesystem Switch (generic filesystem code)
-  and of various filesystem drivers
-
-* include - header files
+* ``include`` - このフォルダにはヘッダ・ファイルが含まれる
 
 * init - the generic (as opposed to architecture specific)
   initialization code that runs during boot
