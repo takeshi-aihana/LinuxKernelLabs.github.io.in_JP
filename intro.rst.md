@@ -103,7 +103,7 @@ Linux の場合は、特にこのルールに厳格です（必要に応じて�
 この件について Linus Torvalds 氏は次のように語っています：
 
 > 「ハイブリッド・カーネル」そのものは - ただのマーケティング用語です。
-> 「そうそう、マイクロ・カーネルには優れた「広告塔」がありました。我々が作業しているカーネルでも優れた広告塔を持つにはどうすればよいだろう？ ああ、こんなのはどうだろうか。かっこいい名前を付けて、他のシステムが持つ広告塔よりも全て優れてますよと言うことを間接的に伝えてみるというのは。」といった感じです。
+> 「そうそう、マイクロ・カーネルには優れた『広告塔』がありました。我々が作業しているカーネルでも優れた広告塔を持つにはどうすればよいだろう？ ああ、こんなのはどうだろうか。かっこいい名前を付けて、他のシステムが持つ広告塔よりも全て優れてますよと言うことを間接的に伝えてみるというのは。」といった感じです。
 
 
 #### アドレス空間
@@ -253,7 +253,7 @@ SMP をサポートするためにカーネルは「同期プリミティブ（�
 
 #### CPU のスケーラビリティ
 
-「CPU のスケーラビリティ」とは、コア数に応じてどれだけ CPU のパフォーマンスが向上するかを表します。
+「CPU のスケーラビリティ」とは、CPU に搭載されたコア数に応じてどれだけ CPU 全体のパフォーマンスが向上するかを表します。
 これに関してカーネル開発者が留意しておくべきことがいくつかあります：
 
    * 可能ならば Lock-free なアルゴリズム[^lock-free-algorithm]を使う
@@ -315,7 +315,7 @@ Linux カーネル開発にコードを提供しているのは大学生や個�
 
 マージ・ウィンドウは最大で2週間しかないので、ほとんどのメンテナは ``-next`` ツリーを立ち上げ、マージ・ウィンドウが終了した後も開発者や下流のメンテナから提出された新しい機能の Pull リクエストを受け付けています。
 
-バグの修正はマージ・ウィンドウが終わった後でもメンテナのツリーで受け付けていることに注意して下さい。これらのパッチはリリース候補が作成される度に、定期的に上流のメンテナに Pull される仕組みです。
+バグの修正については、マージ・ウィンドウが終わった後でもメンテナのツリーで受け付けていることに注意して下さい。これらのパッチはリリース候補が作成される度に、定期的に上流のメンテナに Pull される仕組みです。
 
 #### Linux のソース・コードの配置
 
@@ -327,13 +327,13 @@ Linux カーネル開発にコードを提供しているのは大学生や個�
 
 * ``block`` - このフォルダにはいろいろなブロック・デバイスからデータの読み書きを処理するブロック・サブシステムのコードが含まれる: 具体的には、ブロック I/O 要求の作成、I/O 要求のスケジューリング（いくつかの I/O スケジューリングが利用できる）、I/O 要求のマージ、そして I/O 要求を I/O スタックを介してブロック・デバイスのドライバに渡す
 
-* ``certs`` - フォルダは証明書を使って署名を確認するための仕組みの実装が含まれる
+* ``certs`` - フォルダは証明書を使って署名を確認するための仕組みが実装されている
 
 * ``crypto`` - このフォルダには、いろいろな種類の暗号化アルゴリズムの実装と、その類の暗号化アルゴリズムをハードウェアで解除することができるフレームワークが含まれる
 
-* ``Documentation`` - このフォルダには、いろいろなサブシステム、Linux カーネルのコマンド・ライン・オプション、``sysfs`` ファイルの説明、そしてフォーマットやデバイス・ツリーのバインディング（サポートしているデバイス・ツリーのノードとフォーマット）などのドキュメントが含まれる
+* ``Documentation`` - このフォルダには、いろいろなサブシステム、Linux カーネルのコマンド・ライン・オプション、``sysfs`` 配下のファイルとフォーマットの説明、そしてデバイス・ツリーのバインディング（サポートしているデバイス・ツリーのノードとフォーマット）などのドキュメントが含まれる
 
-* ``drivers`` - このフォルダには、いろいろな種類のデバイス・ドライバの他に、Linux のドライバ・モデルの実装（ドライバ、デバイス・バス、そして接続方法について記述した抽象化モデル）が含まれる
+* ``drivers`` - このフォルダには、いろいろな種類のデバイス・ドライバの他に、Linux のドライバ・モデルの実装（ドライバj自体、デバイス・バス、そして接続方法について記述した抽象化モデル）が含まれる
 
 * ``firmware`` - このフォルダには、いろいろな種類のデバイス・ドライバから利用される 2進または16進のファームウェアのファイルが含まれる
 
@@ -341,222 +341,109 @@ Linux カーネル開発にコードを提供しているのは大学生や個�
 
 * ``include`` - このフォルダにはヘッダ・ファイルが含まれる
 
-* init - the generic (as opposed to architecture specific)
-  initialization code that runs during boot
+* ``init`` - このフォルダには Kernel 起動時に実行される、アーキテクチャに特化しない汎用的な初期化コードが含まれる
 
-* ipc - implementation for various Inter Process Communication system
-  calls such as message queue, semaphores, shared memory
+* ``ipc`` - このフォルダには、メッセージ・キュー、セマフォ・共有メモリといったいろいろなプロセス間通信のシステムコールの実装が含まれる
 
-* kernel - process management code (including support for kernel
-  thread, workqueues), scheduler, tracing, time management, generic
-  irq code, locking
+* ``kernel`` - このフォルダには、プロセス管理（カーネル・スレッド、ワークキューのサポートを含む）やスケジューラ、トレース、時刻管理、汎用 IRQ、そしてロックなどのコードが含まれる
 
-* lib - various generic functions such as sorting, checksums,
-  compression and decompression, bitmap manipulation, etc.
+* ``lib`` - このフォルダには、ソートやチェックサム、文字列の比較、圧縮と解凍、ビットマップの操作などといった汎用的なユーテリティ関数の実装が含まれる
 
-* mm - memory management code, for both physical and virtual memory,
-  including the page,  SL*B and CMA allocators, swapping, virtual memory
-  mapping, process address space manipulation, etc.
+* ``mm`` - このフォルダには、物理メモリと仮想メモリの両方の（ページのメカニズムを含む）メモリ管理用のコードや ``SL*B`` と ``CMA`` アロケータ、スワップ、仮想メモリのマッピング、プロセスのアドレス空間操作などの実装が含まれる
 
-* net - implementation for various network stacks including IPv4 and
-  IPv6; BSD socket implementation, routing, filtering, packet
-  scheduling, bridging, etc.
+* ``net`` - このフォルダには、IPv4 と IPv6 を含むいろいろなネットワーク・スタックにある実装が含まれる; その他に BSD ソケットの実装、経路、フィルタリング、パケットのスケジューリング、ブリッジなどの実装が含まれる
 
-* samples - various driver samples
+* ``samples`` - このフォルダには、いろいろなドライバのサンプル・コードが含まれる
 
-* scripts - parts the build system, scripts used for building modules,
-  kconfig the Linux kernel configurator, as well as various other
-  scripts (e.g. checkpatch.pl that checks if a patch is conform with
-  the Linux kernel coding style)
+* ``scripts`` - このフォルダはビルド・システムの一部で、モジュールのビルドで使うスクリプトや Linux カーネルの設定で使う ``kconfig`` の他にもいろいろなスクリプト（例えば ``checkpatch.pl`` はパッチ・ファイルが Linux カーネルのコーディング規則に準拠しているかどうかをチェックする）が含まれる
 
-* security - home of the Linux Security Module framework that allows
-  extending the default (Unix) security model as well as
-  implementation for multiple such extensions such as SELinux, smack,
-  apparmor, tomoyo, etc.
+* ``security`` - このフォルダには、デフォルトの Unix セキュリティ・モジュールで拡張することが可能な Linux セキュリティ・モジュールのフレームワークの実装の他に、SELinux や smack、apparmor、tomoyo といった複数の拡張キットの実装が含まれる
 
-* sound - home of ALSA (Advanced Linux Sound System) as well as the
-  old Linux sound framework (OSS)
+* ``sound`` - このフォルダには、``ALSA``（*Advanced Linux Sound System*）の他に旧型の Linux サウンド・フレームワーク (``OSS``) の実装が含まれる
 
-* tools - various user space tools for testing or interacting with
-  Linux kernel subsystems
+* ``tools`` - このフォルダには、いろいろな Linux カーネル・サブシステムを使ったテストや対話する際に使うユーザ空間のツールがいろいろ含まれる
 
-* usr - support for embedding an initrd file in the kernel image
+* ``usr`` - このフォルダには ``initrd`` ファイルをカーネルの中に埋め込むための実装が含まれる
 
-* virt - home of the KVM (Kernel Virtual Machine) hypervisor
+* ``virt`` - このフォルダには ``KVM``（*Kernel Virtual Machine*）のハイパーバイザの実装が含まれる
 
 
-Linux kernel architecture
--------------------------
+#### Linux カーネルのアーキテクチャ
 
-.. slide:: Linux kernel architecture
-   :level: 2
-   :inline-contents: True
-
-   .. ditaa::
-      :height: 100%
-
-      +---------------+  +--------------+      +---------------+
-      | Application 1 |  | Application2 | ...  | Application n |
-      +---------------+  +--------------+      +---------------+
-              |                 |                      |
-              v                 v                      v
-      +--------------------------------------------------------+
-      |                       Kernel                           |
-      |                                                        |
-      |   +----------------------+     +-------------------+   |
-      |   |  Process Management  |     | Memory Management |   |
-      |   +----------------------+     +-------------------+   |
-      |                                                        |
-      |   +------------+    +------------+    +------------+   |
-      |   | Block I/O  |    |    VFS     |    | Networking |   |
-      |   +------------+    +------------+    +------------+   |
-      |                                                        |
-      |   +------------+    +------------+    +------------+   |
-      |   |    IPC     |    |  Security  |    |   Crypto   |   |
-      |   +------------+    +------------+    +------------+   |
-      |                                                        |
-      |   +------------+    +------------+    +------------+   |
-      |   |    DRM     |    |    ALSA    |    |    USB     |   |
-      |   +------------+    +------------+    +------------+   |
-      |                        ...                             |
-      +--------------------------------------+-----------------+
-      |           Device drivers             |     arch        |
-      |                                      |                 |
-      | +----+ +-----+ +--------+ +----+     |  +----------+   |
-      | |char| |block| |ethernet| |wifi|     |  | machine 1|   |
-      | +----+ +-----+ +--------+ +----+     |  +----------+   |
-      | +----------+ +-----+ +----+ +---+    |  +----------+   |
-      | |filesystem| |input| |iio | |usb|    |  | machine 2|   |
-      | +----------+ +-----+ +----+ +---+    |  +----------+   |
-      | +-----------+ +----------+  +---+    |                 |
-      | |framebuffer| | platform |  |drm|    |     ...         |
-      | +-----------+ +----------+  +---+    |                 |
-      +-------------------------+----+-------+-----------------+
-              |                 |                      |
-              v                 v                      v
-
-      +--------------------------------------------------------+
-      |                         Hardware                       |
-      +--------------------------------------------------------+
+![](images/Fig8-LinuxKernelArchitecture.png)
 
 
-arch
-....
+##### arch
 
-.. slide:: arch
-   :level: 2
-   :inline-contents: True
+   * アーキテクチャ特有のコード
 
-   * Architecture specific code
+   * マシン特有のコードの中でさらにディレクトリが細分化されている可能性あり
 
-   * May be further sub-divided in machine specific code
+   * ブート・ローダーとのインタフェースとアーキテクチャ特有の初期化
 
-   * Interfacing with the boot loader and architecture specific
-     initialization
+   * 割り込みコントローラや SMP コントローラ、そしていろいろな BUS コントローラと例外や割り込みの設定、仮想メモリの扱い等、アーキテクチャまたはマシン特有の様々なハードウェアの仕掛けにアクセスする
 
-   * Access to various hardware bits that are architecture or machine
-     specific such as interrupt controller, SMP controllers, BUS
-     controllers, exceptions and interrupt setup, virtual memory handling
+   * アーキテクチャ向けに最適化したいろいろな関数（例えば ``memcpy()`` や文字列操作など）
 
-   * Architecture optimized functions (e.g. memcpy, string operations,
-     etc.)
+この部分にはアーキテクチャ特有のコードが含まれており、場合によっては、arm などの特定のアーキテクチャに対するマシン特有のコードにさらに分割されます。
 
-This part of the Linux kernel contains architecture specific code and
-may be further sub-divided in machine specific code for certain
-architectures (e.g. arm).
+「Linux は初め 32-ビットの x86 ベースな PC（386 以上）向けに開発されました。
+最近では、（少なくとも）Compaq Alppha AXP、Sun SPARC と UltraSPARC、Motorola 68000、PowerPC、PowerPC6、ARM、Hitachi SuperH、IBM S/390、MIPS、HP PA-RISC、Intel IA-64、DEC VAX、AMD x86-64、そして CRIS アーキテクチャ上で動きます。」
 
-"Linux was first developed for 32-bit x86-based PCs (386 or
-higher). These days it also runs on (at least) the Compaq Alpha AXP,
-Sun SPARC and UltraSPARC, Motorola 68000, PowerPC, PowerPC64, ARM,
-Hitachi SuperH, IBM S/390, MIPS, HP PA-RISC, Intel IA-64, DEC VAX, AMD
-x86-64 and CRIS architectures.”
+例えば、割り込みコントローラや SMP コントローラ、そして様々な BUS コントローラや例外、割り込みの設定、仮想メモリの扱い等、アーキテクチャやマシン特有のいろいろなハードウェアの仕掛けにアクセスする実装になっています。
 
-It implements access to various hardware bits that are architecture or
-machine specific such as interrupt controller, SMP controllers, BUS
-controllers, exceptions and interrupt setup, virtual memory handling.
-
-It also implements architecture optimized functions (e.g. memcpy,
-string operations, etc.)
+さらにアーキテクチャ向けに最適化された（例えば ``memcpy()`` や文字列操作などの）いろいろな関数を実装しています。
 
 
-Device drivers
-..............
+##### いろいろなデバイス・ドライバ
 
-.. slide:: Device drivers
-   :level: 2
+   * 統一されたデバイス・モデル
 
-   * Unified device model
+   * 各サブシステムは独自のドライバー・インタフェースを持つ
 
-   * Each subsystem has its own specific driver interfaces
-
-   * Many device driver types (TTY, serial, SCSI, fileystem, ethernet,
-     USB, framebuffer, input, sound, etc.)
-
-The Linux kernel uses a unified device model whose purpose is to
-maintain internal data structures that reflect the state and structure
-of the system. Such information includes what devices are present,
-what is their status, what bus they are attached to, to what driver
-they are attached, etc. This information is essential for implementing
-system wide power management, as well as device discovery and dynamic
-device removal.
-
-Each subsystem has its own specific driver interface that is tailored
-to the devices it represents in order to make it easier to write
-correct drivers and to reduce code duplication.
-
-Linux supports one of the most diverse set of device drivers type,
-some examples are: TTY, serial, SCSI, fileystem, ethernet, USB,
-framebuffer, input, sound, etc.
+   * たくさんのデバイス・ドライバの種類がある（TTY、シリアル、SCSI、ファイルシステム、イーサーネット、USB、フレームバッファ、入力デバイス、サウンドなど）
 
 
-Process management
-..................
+Linux カーネルは、システムの状態とその構造を反映したデータ構造体を内部で維持することを目的として、統一されたデバイス・モデルを採用しています。
+このようなデータ構造体には、例えば現在接続されているデバイスは何か？ それらの状態は？ あるいは、どのバスに何のデバイスが接続されているか？ などといった情報が含まれています。
+これはシステム規模の電源管理やデバイスの検出、そして動的なデバイスの挿抜の実装には不可欠な情報です。
 
-.. slide:: Process management
-   :level: 2
+各サブシステムには、もっと簡単に妥当なドライバを記述できたり、同じようなコードが重複しないよう実装を簡単に共通化できるようにするために、いろいろなデバイスとの間の調整役となる独自のドライバ・インタフェースがあります。
 
-   * Unix basic process management and POSIX threads support
-
-   * Processes and threads are abstracted as tasks
-
-   * Operating system level virtualization
-
-     * Namespaces
-
-     * Control groups
-
-Linux implements the standard Unix process management APIs such as
-fork(), exec(), wait(), as well as standard POSIX threads.
-
-However, Linux processes and threads are implemented particularly
-different than other kernels. There are no internal structures
-implementing processes or threads, instead there is a :c:type:`struct
-task_struct` that describe an abstract scheduling unit called task.
-
-A task has pointers to resources, such as address space, file
-descriptors, IPC ids, etc. The resource pointers for tasks that are
-part of the same process point to the same resources, while resources
-of tasks of different processes will point to different resources.
-
-This peculiarity, together with the `clone()` and `unshare()` system
-call allows for implementing new features such as namespaces.
-
-Namespaces are used together with control groups (cgroup) to implement
-operating system virtualization in Linux.
-
-cgroup is a mechanism to organize processes hierarchically and
-distribute system resources along the hierarchy in a controlled and
-configurable manner.
+Linux は種類が異なるデバイス・ドライバをたくさんサポートしています。
+その幾つかは例えば： TTY、シリアル、SCSI、ファイルシステム、イーサーネット、USB、フレームバッファ、入力デバイス、サウンドなど
 
 
-Memory management
-.................
+##### プロセス管理
+
+   * Unix の基本的なプロセス管理と POSIX のスレッドをサポートする
+
+   * プロセスとスレッドはタスクを抽象化したもの
+
+   * オペレーティング・システム規模の仮想化
+
+     * いろいろな名前空間
+
+     * たくさんのコントロール・グループ
+
+
+Linux は、``fork()`` や ``exec()`` や ``wait()`` といった標準的な Unix プロセス管理の API を実装している他に、こちらも標準的な POSIX スレッドを実装しています。
+
+但し、Linux のプロセスとスレッドは他のカーネルとはかなり異なる方法で実装されています。
+カーネル内部でプロセスやスレッドそのものを実装した構造ではなく、代わりに「タスク」と呼ばれるスケジューリングの単位を記述した ``struct task_struct`` が存在します。
+
+タスクは、アドレス空間、ファイル・ディスクリプタp、IPC の ids などの「リソース」を指すポインタを持っています。
+同じプロセスの一部であるタスクのリソース・ポインタは同じリソースを指し、別のプロセスのタスクのリソース・ポインタは別のリソースを指しています。
+
+これは特に、``clone()`` と ``unshare()`` といったシステム・コールを一緒に使うことでて「名前空間」のような新しい機能を実装することができます。
+
+名前空間は「コントロール・グループ」（``cgroup``）と一緒に使用して、Linux でいろいろなオペレーティング・システムの仮想化を実装します。
+
+``cgroup`` はプロセスを階層的にまとめ、コントロールされ構成可能なルールで階層に沿ってシステムのリソースを分散させる仕組みです。
+
+##### メモリ管理
 
 Linux memory management is a complex subsystem that deals with:
-
-.. slide:: Memory management
-   :level: 2
-   :inline-contents: True
 
    * Management of the physical memory: allocating and freeing memory
 
@@ -569,9 +456,7 @@ Linux memory management is a complex subsystem that deals with:
    * Kernel services: SL*B allocators, vmalloc
 
 
-
-Block I/O management
-....................
+##### ブロック I/O の管理
 
 The Linux Block I/O subsystem deals with reading and writing data from
 or to block devices: creating block I/O requests, transforming block I/O
@@ -579,12 +464,7 @@ requests (e.g. for software RAID or LVM), merging and sorting the
 requests and scheduling them via various I/O schedulers to the block
 device drivers.
 
-.. slide:: Block I/O management
-   :level: 2
-   :inline-contents: True
-
-   .. ditaa::
-      :height: 100%
+![](images/Fig9-BlockIOManagement.png)
 
       +---------------------------------+
       |    Virtual Filesystem Switch    |
@@ -616,8 +496,8 @@ device drivers.
       +--------------+  +--------------+
 
 
-Virtual Filesystem Switch
-.........................
+##### 仮想ファイルシステムの切り替え
+
 
 The Linux Virtual Filesystem Switch implements common / generic
 filesystem code to reduce duplication in filesystem drivers. It
@@ -635,13 +515,7 @@ introduces certain filesystem abstractions such as:
   (e.g. number of blocks, block size, location of root directory on
   disk, encryption, etc.)
 
-.. slide:: Virtual Filesystem Switch
-   :level: 2
-   :inline-contents: True
-
-   .. ditaa::
-      :height: 100%
-
+![](images/Fig10-VFSwitch.png)
 
              ^                    ^                    ^
              | stat               | open               | read
@@ -683,15 +557,9 @@ includes the following:
 
 
 
-Networking stack
-................
+##### ネットワーク・スタック
 
-.. slide:: Networking stack
-   :level: 2
-   :inline-contents: True
-
-   .. ditaa::
-      :height: 100%
+![](images/Fig11-NetworkingStack.png)
 
       +---------------------------+
       | Berkeley Socket Interface |
