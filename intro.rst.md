@@ -321,7 +321,7 @@ Linux カーネル開発にコードを提供しているのは大学生や個�
 
 ![](images/Fig7-LinuxSourceCodeLayout.png)
 
-これらは Linux のソース・コードのトップレベルにあるフォルダの一覧です：
+これらは Linux のソース・コードのトップレベルにあるディレクトリの一覧です：
 
 * ``arch`` - このフォルダにはアーキテクチャ特有のコードが含まれる ; 各アーキテクチャはそれぞれ専用のサブ・フォルダ（例えば ``arm``、``arm64``、``x86`` など）の下で実装されている
 
@@ -439,170 +439,67 @@ Linux は、``fork()`` や ``exec()`` や ``wait()`` といった標準的な Un
 
 名前空間は「コントロール・グループ」（``cgroup``）と一緒に使用して、Linux でいろいろなオペレーティング・システムの仮想化を実装します。
 
-``cgroup`` はプロセスを階層的にまとめ、コントロールされ構成可能なルールで階層に沿ってシステムのリソースを分散させる仕組みです。
+``cgroup`` はプロセスを階層化してまとめ、コントロールし変更が可能なルールの中で階層に従ってシステムのリソースを分散させる仕組みです。
+
 
 ##### メモリ管理
 
-Linux memory management is a complex subsystem that deals with:
+Linux のメモリ管理は、次のような仕組みを扱うため複雑なサブシステムになっています：
 
-   * Management of the physical memory: allocating and freeing memory
+   * 物理メモリの管理： メモリの確保と解放
 
-   * Management of the virtual memory: paging, swapping, demand
-     paging, copy on write
+   * 仮想メモリの管理： ページング（*paging*）、スワップ操作（*swapping*）、デマンド・ページング（*demand paging*）、コピー・オン・ライト（*copy on write*）
 
-   * User services: user address space management (e.g. mmap(), brk(),
-     shared memory)
+   * ユーザ空間のサービス： ユーザのアドレス空間の管理（例えば ``mmap()``、``brk()`` そして共有メモリなど）
 
-   * Kernel services: SL*B allocators, vmalloc
+   * カーネル空間のサービス： ``SL*B`` 系アロケータ、``vmalloc()``
 
 
 ##### ブロック I/O の管理
 
-The Linux Block I/O subsystem deals with reading and writing data from
-or to block devices: creating block I/O requests, transforming block I/O
-requests (e.g. for software RAID or LVM), merging and sorting the
-requests and scheduling them via various I/O schedulers to the block
-device drivers.
+Linux のブロック I/O サブシステムはブロック・デバイスからデータの読み込み、またはブロック・デバイスへデータの書き込みを処理します：
+具体的にはブロック I/O 要求の作成、ブロック I/O 要求の変換（例えば、ソフトウェア RAID や LVM の場合)、I/O 要求の合体と並び替え、そしていろいろな I/O スケジューラを介して I/O 要求をブロック・デバイスのドライバにスケジューリングしながら送信する
 
 ![](images/Fig9-BlockIOManagement.png)
 
-      +---------------------------------+
-      |    Virtual Filesystem Switch    |
-      +---------------------------------+
-                     ^
-                     |
-                     v
-      +---------------------------------+
-      |         Device Mapper           |
-      +---------------------------------+
-                     ^
-                     |
-                     v
-      +---------------------------------+
-      |       Generic Block Layer       |
-      +---------------------------------+
-                     ^
-                     |
-                     v
-      +--------------------------------+
-      |          I/O scheduler         |
-      +--------------------------------+
-             ^                ^
-             |                |
-             v                v
-      +--------------+  +--------------+
-      | Block device |  | Block device |
-      |    driver    |  |    driver    |
-      +--------------+  +--------------+
 
+##### 仮想ファイルシステム・スイッチ
 
-##### 仮想ファイルシステムの切り替え
+Linux 仮想ファイルシステム・スイッチ（``VFS``）は、いろいろなファイルシステムのドライバで重複したコードを減らすためにファイルシステムのコードを共通化または汎用化して実装しています。
+これにより、次に示すようなファイルシステムの抽象化が導入されます：
 
+* ``inode`` - ディスクの上のファイルを表す（ファイルの属性やディスク上のデータ・ブロック領域における位置）
 
-The Linux Virtual Filesystem Switch implements common / generic
-filesystem code to reduce duplication in filesystem drivers. It
-introduces certain filesystem abstractions such as:
+* ``dentry`` - ``inode`` に「名前」を関連付ける
 
-* inode - describes the file on disk (attributes, location of data
-  blocks on disk)
+* ``file`` - オープンしたファイルのプロパティを表す（例えば、ファイル・ポインタ）
 
-* dentry - links an inode to a name
-
-* file - describes the properties of an opened file (e.g. file
-  pointer)
-
-* superblock - describes the properties of a formatted filesystem
-  (e.g. number of blocks, block size, location of root directory on
-  disk, encryption, etc.)
+* ``superblock`` - フォーマットしたファイルシステムのプロパティを表す（例えば、ブロック数、ブロック・サイズ、ディスク上の root ディレクトリの位置、暗号化、など）
 
 ![](images/Fig10-VFSwitch.png)
 
-             ^                    ^                    ^
-             | stat               | open               | read
-             v                    v                    v
-      +------------------------------------------------------------+
-      |                   Virtual Filesystem Switch                |
-      |                                                            |
-      |                                                            |
-      |    /-------\           /--------\           /--------\     |
-      |    | inode |<----------+ dentry |<----------+  FILE  |     |
-      |    \---+---/           \----+---/           \---+----/     |
-      |        |                    |                   |          |
-      |        |                    |                   |          |
-      |        v                    v                   v          |
-      |    +-------+           +--------+           +-------+      |
-      |    | inode |           | dentry |           | page  |      |
-      |    | cache |           | cache  |           | cache |      |
-      |    +-------+           +--------+           +-------+      |
-      |                                                            |
-      +------------------------------------------------------------+
-                   ^                                  ^
-                   |                                  |
-                   v                                  v
-            +-------------+                    +-------------+
-            | Filesystem  |                    | Filesystem  |
-            |   driver    |                    |   driver    |
-            +-------------+                    +-------------+
 
+さらに Linux の VFS は、次に示すような複雑なキャッシュのメカニズムを実装しています：
 
-The Linux VFS also implements a complex caching mechanism which
-includes the following:
+* inode キャッシュ - ファイルの属性値と内部のメタデータをキャシュする
 
-* the inode cache - caches the file attributes and internal file
-  metadata
+* dentry キャッシュ - ファイルシステムのディレクトリ階層をキャシュする
 
-* the dentry cache - caches the directory hierarchy of a filesystem
-
-* the page cache - caches file data blocks in memory
-
+* page キャッシュ - ファイルのデータ・ブロックをメモリの中にキャシュする
 
 
 ##### ネットワーク・スタック
 
 ![](images/Fig11-NetworkingStack.png)
 
-      +---------------------------+
-      | Berkeley Socket Interface |
-      +---------------------------+
 
-      +---------------------------+
-      |      Transport layer      |
-      +-------------+-------------+
-      |      TCP    |     UDP     |
-      +-------------+-------------+
+#### Linux のセキュリティ・モジュール
 
-      +---------------------------+
-      |      Network layer        |
-      +-----+---------+-----------+
-      | IP  | Routing | NetFilter |
-      +-----+---------+-----------+
+   * デフォルトの Linux セキュリティ・モデルを拡張してフックする
 
-      +---------------------------+
-      |     Data link layer       |
-      +-------+-------+-----------+
-      |  ETH  |  ARP  | BRIDGING  |
-      +-------+-------+-----------+
+   * 次のような Linux セキュリテイ拡張によって使用される：
 
-      +---------------------------+
-      |    Queuing discipline     |
-      +---------------------------+
-
-      +---------------------------+
-      | Network device drivers    |
-      +---------------------------+
-
-Linux Security Modules
-......................
-
-.. slide:: Linux Security Modules
-   :level: 2
-   :inline-contents: True
-
-   * Hooks to extend the default Linux security model
-
-   * Used by several Linux security extensions:
-
-     * Security Enhancened Linux
+     * SELInux（*Security Enhancened Linux*）
 
      * AppArmor
 
