@@ -8,5 +8,5 @@ Japanese translation of [Linux Kernel Teaching](https://linux-kernel-labs.github
 
 ## 目次（*Index*）
 
-* [はじめに](ntro.rst.md#はじめに)
+* [はじめに](/intro.rst.md#はじめに)
 
