@@ -27,9 +27,14 @@
 
 「ユーザ・モード」と「カーネル・モード」は CPU プロセッサの実行モードを指す用語です。
 カーネル・モードで実行するコードは完全に
-[#hypervisor]_CPU を制御できますが、ユーザ・モードで実行されるコードは幾つか制限があります。
+[#hypervisor]_ CPU を制御できますが、ユーザ・モードで実行されるコードは幾つか制限があります。
 例えば CPU の割り込みはカーネル・モードで実行中のときにだけ無効にしたり有効にすることができます。
 もし、そのような処理がユーザ・モードで行われたら例外が発生し、カーネルがその例外を引き継ぎます。
+
+.. [#hypervisor] some processors may have even higher privileges than
+                 kernel mode, e.g. a hypervisor mode, that is only
+                 accessible to code running in a hypervisor (virtual
+                 machine monitor)
 
 .. [#hypervisor] プロセッサの中にはカーネル・モードよりも更に高い特権を持つものがあります。
 例えば「ハイパーバイザ・モード」はハイパーバイザ（仮想マシンを監視するシステム）で実行しているコードにだけアクセスが可能です。
