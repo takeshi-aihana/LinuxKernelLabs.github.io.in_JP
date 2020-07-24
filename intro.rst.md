@@ -376,7 +376,7 @@ Linux カーネル開発にコードを提供しているのは大学生や個�
 
 #### Linux カーネルのアーキテクチャ
 
-![](images/Fig8-LinuxKernelArchitecture.png)
+![](images/Fig8-LinuxKernelArchitecture_JP.png)
 
 
 ##### arch
