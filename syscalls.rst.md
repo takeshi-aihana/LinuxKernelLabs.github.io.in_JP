@@ -15,11 +15,11 @@
 
 ### Linux のシステム・コールの実装
 
-高位のレベルのシステム・コールはカーネルからユーザ空間のアプリケーションに提供される「サービス群」であり、名前と引数と返り値を持つ関数呼び出しとして記述されている点で言うと、ユーザ空間にあるライブラリの API に似ています。
+高位のレベルにあるシステム・コールは、カーネルからユーザ空間にあるアプリケーションに提供される「サービス群」であり、名前と引数と返り値を持つ関数呼び出しとして記述されている点で言うと、ユーザ空間にあるライブラリの API に似ています。
 
 ![](images/Fig12-LinuxSystemCallsImplementation.png)
 
-但し、よく見てみると、システム・コールは実際には関数呼び出しではなく、次のようなことを実行する（アーキテクチャとカーネル固有の）特別なアセンブリ命令であることがわかります：
+しかし、よく見てみると、システム・コールは実際には関数呼び出しではなく、次のようなことを実行する（アーキテクチャとカーネル固有の）特別なアセンブリ命令であることがわかります：
 
    * システム・コールとその引数を識別するための情報をセットする
 
@@ -27,69 +27,38 @@
 
    * システム・コールの結果を受け取る
 
-Linux でシステム・コールは番号で識別され、システム・コールに渡す引数のサイズはマシンのワード単位（32 または 64-ビット）になります。
+Linux のシステム・コールは番号で識別され、システム・コールに渡す引数のサイズはマシンのワード単位（32 または 64-ビット）になります。
 システム・コールには最大で6つの引数を渡すことができます。
 システム・コールと引数の両方が特定のレジスタに格納されます。
 
-例えば 32-ビットの x86 アーキテクチャの場合、システム・コールの識別子は EAX レジスタに格納され、システム・コールに渡す引数はそれぞれ EBX、ECX、EDX、ESI、EDI、EBP レジスタに格納されます。
+例えば 32-ビットの x86 アーキテクチャの場合、システム・コールの識別番号は EAX レジスタに格納され、システム・コールに渡す引数はそれぞれ EBX、ECX、EDX、ESI、EDI、EBP レジスタに格納されます。
 
-System libraries (e.g. libc) offers functions that implement the actual system calls in order to make it easier for applications to use them.
+glibc などのシステム・ライブラリが提供している関数は実際のシステム・コールを呼び出す実装になっているので、アプリケーションからシステムコールを簡単に利用できるようになっています。
 
-When a user to kernel mode transition occurs, the execution flow is interrupted and it is transfered to a kernel entry point.
-This is similar with how interrupts and exception are handled (in fact on some architectures this transition happens as a result of an exception).
+CPU の実行モードがユーザ・モードからカーネル・モードに遷移すると、実行中のコードの流れが中断されてカーネルのエントリ・ポイントに転送されます。
+これは割り込みや例外の対応方法と似ています
+（実際、一部のアーキテクチャでは、この遷移が例外の結果として発生する実装になっています）。
 
-The system call entry point will save registers (which contains values from user space, including system call number and system call parameters) on stack and then it will continue with executing the system call dispatcher.
-
-.. note:: During the user - kernel mode transition the stack is also
-          switched from ther user stack to the kernel stack. This is
-          explained in more details in the interrupts lecture.
-
-.. slide:: Example of Linux system call setup and handling
-   :inline-contents: True
-   :level: 2
-
-   .. ditaa::
-
-           +-------------+   dup2    +-----------------------------+
-           | Application |-----+     |  libc                       |
-           +-------------+     |     |                             |
-                               +---->| C7590 dup2:                 |
-                                     | ...                         |
-                                     | C7592 movl 0x8(%esp),%ecx   |
-                                     | C7596 movl 0x4(%esp),%ebx   |
-                                     | C759a movl $0x3f,%eax       |
-      +------------------------------+ C759f int $0x80             |
-      |                              | ...                         +<-----+
-      |                              +-----------------------------+   	  |
-      |								      	  |
-      |						  		    	  |
-      |								    	  |
-      |								    	  |
-      |    +------------------------------------------------------------+ |
-      |    |                      Kernel                                | |
-      |    |                                                            | |
-      +--->|ENTRY(entry_INT80_32)                                       | |
-           | ASM_CLAC                                                   | |
-           | pushl   %eax                    # pt_regs->orig_ax         | |
-           | SAVE_ALL pt_regs_ax=$-ENOSYS    # save rest                | |
-           | ...                                                        | |
-           | movl   %esp, %eax                                          | |
-           | call   do_int80_syscall_32                                 | |
-           | ....                                                       | |
-           | RESTORE_REGS 4                  # skip orig_eax/error_code | |
-           | ...                                                        | |
-           | INTERRUPT_RETURN                                           +-+
-           +------------------------------------------------------------+
+システム・コールを開始するエントリ・ポイントでは、まず複数のレジスタ
+（これらのレジスタにはユーザ空間からセットされた値、システム・コールの識別番号、そして引数が格納されている）
+の内容をスタックに保存してから、システム・コールのディスパッチャをの実行を続けます。
 
 
-The purpose of the system call dispatcher is to verify the system call
-number and run the kernel function associated with the system call.
+##### Note
 
-.. slide:: Linux System Call Dispatcher
-   :inline-contents: True
-   :level: 2
+ユーザ・モードからカーネル・モードへの遷移中は、スタックもユーザ空間のスタックからカーネル空間のスタックに切り替わります。
+ここでは「割り込み」の講義で使用した詳しい説明を引用します：
 
-   .. code-block:: c
+###### ***Linuxのシステム・コールをセットアップして処理する例***
+
+![](images/Fig13-LinuxSystemCallSetupAndHandling.png)
+
+システム・コール・ディスパッチャの目的はシステム・コールの識別番号を確認し、そのシステム・コールに関連づけられたカーネル関数を実行することです。
+
+
+* Linux システム・コール・ディスパッチャの実装（一部）
+
+```c
 
       /* Handles int $0x80 */
       __visible void do_int80_syscall_32(struct pt_regs *regs)
@@ -110,44 +79,29 @@ number and run the kernel function associated with the system call.
 	                                         regs->di, regs->bp);
 	  syscall_return_slowpath(regs);
       }
+```
+
+システム・コールの実行フローをデモする為に、仮想マシンを用意して実行中のカーネルに ``gdb`` でアタッチして、``dup2()`` というシステム・コールにブレークポイントを追加して状態を調査して下さい。
+
+* ``dup2()`` システム・コールの調査の動画（**syscalls-inspection.cast**) HERE
 
 
-
-To demonstrate the system call flow we are going to use the virtual
-machine setup, attach gdb to a running kernel, add a breakpoint to the
-dup2 system call and inspect the state.
-
-.. slide:: Inspecting dup2 system call
-   :inline-contents: True
-   :level: 2
-
-   |_|
-
-   .. asciicast:: syscalls-inspection.cast
+上の動画を要約すると、これはシステム・コールを処理している最中に発生することです：
 
 
-In summary, this is what happens during a system call:
+システム・コールの実行フロー（サマリ）
 
-.. slide:: System Call Flow Summary
-   :inline-contents: True
-   :level: 2
+   * アプリケーションはシステム・コールの番号と引数をセットアップしてから ``trap()`` 命令を呼び出す
 
-   * The application is setting up the system call number and
-     parameters and it issues a trap instruction
+   * 実行モードがユーザからカーネルに切り替わる ; CPU がカーネルのスタックに切り替える ; ユーザ空間のスタックと戻り先のアドレスがカーネルのスタックに保存される
 
-   * The execution mode switches from user to kernel; the CPU switches
-     to a kernel stack; the user stack and the return address to user
-     space is saved on the kernel stack
+   * カーネルのエントリーポイントがカーネルのスタック上にいろいろなレジスタの値を保存する
 
-   * The kernel entry point saves registers on the kernel stack
+   * システム・コール・ディスパッチャがシステム・コールに対応づけられた関数を識別して実行する
 
-   * The system call dispatcher identifies the system call function
-     and runs it
+   * ユーザ空間のレジスタの状態が復元され、実行フローがユーザ空間に戻される（例えば ``IRET`` 命令を実行する)
 
-   * The user space registers are restored and execution is switched
-     back to user (e.g. calling IRET)
-
-   * The user space application resumes
+   * ユーザ空間のアプリケーションが実行を再開する
 
 
 System call table
