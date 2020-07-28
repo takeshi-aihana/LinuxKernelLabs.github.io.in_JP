@@ -104,17 +104,12 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
    * ユーザ空間のアプリケーションが実行を再開する
 
 
-System call table
------------------
 
-The system call table is what the system call dispatcher uses to map
-system call numbers to kernel functions:
+#### システム・コール・テーブル
 
-.. slide:: System Call Table
-   :inline-contents: True
-   :level: 2
+「システム・コール・テーブル」は、いろいろなシステム・コールの識別番号とカーネル関数を対応付けするためにシステム・コール・ディスパッチャが使用するものです：
 
-   .. code-block:: c
+```c
 
       #define __SYSCALL_I386(nr, sym, qual) [nr] = sym,
 
@@ -122,9 +117,9 @@ system call numbers to kernel functions:
         [0 ... __NR_syscall_compat_max] = &sys_ni_syscall,
         #include <asm/syscalls_32.h>
       };
+```
 
-   .. code-block:: c
-
+```c
       __SYSCALL_I386(0, sys_restart_syscall, )
       __SYSCALL_I386(1, sys_exit, )
       #ifdef CONFIG_X86_32
@@ -134,44 +129,26 @@ system call numbers to kernel functions:
       #endif
       __SYSCALL_I386(3, sys_read, )
       __SYSCALL_I386(4, sys_write, )
+```
 
 
+#### システム・コールの引数の扱い
 
-System call parameters handling
--------------------------------
+システム・コールの引数の取り扱いは少し注意が必要です。
+これらの値はユーザ空間から渡されるため、カーネルはそれらの妥当性を想定することができず、常にそれらを徹底的に検証してやる必要があります。
 
-Handling system call parameters is tricky. Since these values are
-setup by user space, the kernel can not assume correctness and must
-always verify them throughly.
+ポインタには、必ず確認すべきいくつか重要で特別な場面があります：
 
-Pointers have a few important special cases that must be checked:
+   * 絶対にポインタはカーネル空間のメモリを指してはいけない
+   * ポインタが無効であるかどうかを確認すること
 
-.. slide:: System Calls Pointer Parameters
-   :inline-contents: True
-   :level: 2
+システム・コールはカーネル・モードで実行されるため、システム・コールがカーネル空間へのアクセス権を持ち、もしいろいろなポインタが適切にチェックされていない場合、ユーザ空間のアプリケーションはカーネル空間への読み込みまたは書き込み権限を取得する可能性があります。
+例として、``read()`` や ``write()`` のシステム・コールに対してこのようなチェックが行われなかった場合について考えてみることにしましょう。
+ユーザが ``write()`` システム・コールにカーネル空間へのポインタを渡すと、あとでファイルを読み込むことによってカーネルにあるデータにアクセスできるようになります。
+ユーザが ``read()`` システム・コールにカーネル空間へのポインタを渡すと、カーネルのメモリを破壊する可能性があります。
 
-   * Never allow pointers to kernel-space
-
-   * Check for invalid pointers
-
-
-Since system calls are executed in kernel mode, they have access to
-kernel space and if pointers are not properly checked user
-applications might get read or write access to kernel space.
-
-For example, lets consider the case where such a check is not made for
-the read or write system calls. If the user passes a kernel-space
-pointer to a write system call then it can get access to kernel data
-by later reading the file. If it passes a kernel-space pointer to a
-read system call then it can corrupt kernel memory.
-
-
-.. slide:: Pointers to Kernel Space
-   :level: 2
-
-   * User access to kernel data if allowed in a write system call
-
-   * User corrupting kernel data if allowed in a read system call
+   * ``write()`` システム・コールで許可されている場合、ユーザはカーネルのデータにアクセスできる
+   * ``read()`` システム・コールで許可されている場合、ユーザはカーネルのデータを破壊する
 
 
 Likewise, if a pointer passed by the application is invalid
