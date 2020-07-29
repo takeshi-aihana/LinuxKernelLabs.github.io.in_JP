@@ -41,13 +41,13 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
 
 システム・コールを開始するエントリ・ポイントでは、まず複数のレジスタ
 （これらのレジスタにはユーザ空間からセットされた値、システム・コールの識別番号、そして引数が格納されている）
-の内容をスタックに保存してから、システム・コールのディスパッチャをの実行を続けます。
+の内容をスタックに保存してから、システム・コールのディスパッチャの実行を継続します。
 
 
 ##### Note
 
-ユーザ・モードからカーネル・モードへの遷移中は、スタックもユーザ空間のスタックからカーネル空間のスタックに切り替わります。
-ここでは「割り込み」の講義で使用した詳しい説明を引用します：
+ユーザ・モードからカーネル・モードへ遷移すると、スタックもユーザ空間のスタックからカーネル空間のスタックに切り替わります。
+ここでは「割り込み」の講義で使用した例を引用します：
 
 ###### ***Linuxのシステム・コールをセットアップして処理する例***
 
@@ -81,33 +81,29 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
       }
 ```
 
-システム・コールの実行フローをデモする為に、仮想マシンを用意して実行中のカーネルに ``gdb`` でアタッチして、``dup2()`` というシステム・コールにブレークポイントを追加して状態を調査して下さい。
+システム・コールの実行フローをデモする為に、仮想マシンを用意して実行中のカーネルを ``gdb`` でアタッチして、``dup2()`` というシステム・コールにブレークポイントを追加して、その状態を調査してみて下さい。
 
 * ``dup2()`` システム・コールの調査の動画（**syscalls-inspection.cast**) HERE
 
 
-上の動画を要約すると、これはシステム・コールを処理している最中に発生することです：
+要約すると、システム・コールの実行フローは次のとおりです：
 
-
-システム・コールの実行フロー（サマリ）
-
-   * アプリケーションはシステム・コールの番号と引数をセットアップしてから ``trap()`` 命令を呼び出す
+   * アプリケーションはシステム・コールの番号と引数を指定してから ``trap()`` 命令を呼び出す
 
    * 実行モードがユーザからカーネルに切り替わる ; CPU がカーネルのスタックに切り替える ; ユーザ空間のスタックと戻り先のアドレスがカーネルのスタックに保存される
 
    * カーネルのエントリーポイントがカーネルのスタック上にいろいろなレジスタの値を保存する
 
-   * システム・コール・ディスパッチャがシステム・コールに対応づけられた関数を識別して実行する
+   * システム・コール・ディスパッチャがシステム・コールに対応づけられた関数を識別して呼び出す
 
    * ユーザ空間のレジスタの状態が復元され、実行フローがユーザ空間に戻される（例えば ``IRET`` 命令を実行する)
 
-   * ユーザ空間のアプリケーションが実行を再開する
-
+   * 割り込まれていたユーザ空間のアプリケーションが実行を再開する
 
 
 #### システム・コール・テーブル
 
-「システム・コール・テーブル」は、いろいろなシステム・コールの識別番号とカーネル関数を対応付けするためにシステム・コール・ディスパッチャが使用するものです：
+「システム・コール・テーブル」は、いろいろなシステム・コールの識別番号とカーネル関数を対応付けするために、システム・コール・ディスパッチャによって使用されるものです：
 
 ```c
 
@@ -137,72 +133,38 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
 システム・コールの引数の取り扱いは少し注意が必要です。
 これらの値はユーザ空間から渡されるため、カーネルはそれらの妥当性を想定することができず、常にそれらを徹底的に検証してやる必要があります。
 
-ポインタには、必ず確認すべきいくつか重要で特別な場面があります：
+ポインタには、必ず確認すべき重要で特別な場面がいくつかあります：
 
    * 絶対にポインタはカーネル空間のメモリを指してはいけない
    * ポインタが無効であるかどうかを確認すること
 
-システム・コールはカーネル・モードで実行されるため、システム・コールがカーネル空間へのアクセス権を持ち、もしいろいろなポインタが適切にチェックされていない場合、ユーザ空間のアプリケーションはカーネル空間への読み込みまたは書き込み権限を取得する可能性があります。
-例として、``read()`` や ``write()`` のシステム・コールに対してこのようなチェックが行われなかった場合について考えてみることにしましょう。
+システム・コールはカーネル・モードで実行されるため、システム・コールがカーネル空間へのアクセス権を持ち、もしいろいろなポインタが無効かどうか不明な場合は、ユーザ空間のアプリケーションはカーネル空間への読み込みまたは書き込み権限を取得する可能性があります。
+例として、``read()`` や ``write()`` のシステム・コールに対してこのような確認が行われなかった場合について考えてみることにしましょう。
 ユーザが ``write()`` システム・コールにカーネル空間へのポインタを渡すと、あとでファイルを読み込むことによってカーネルにあるデータにアクセスできるようになります。
 ユーザが ``read()`` システム・コールにカーネル空間へのポインタを渡すと、カーネルのメモリを破壊する可能性があります。
 
-   * ``write()`` システム・コールで許可されている場合、ユーザはカーネルのデータにアクセスできる
-   * ``read()`` システム・コールで許可されている場合、ユーザはカーネルのデータを破壊する
+同様に、アプリケーションから渡されたポインタが無効（例えば物理アドレスにマップされていない、書き込みに使用するため一時的に読み込み専用になっているなど）な場合は、カーネルが「クラッシュ」する可能性があります。
+このような場合に使えるオススメの方法が二つあります：
 
+   * カーネル空間で参照する前に、ユーザのアドレス空間と照合する、または
+   * ポインタを直接確認するのではなく、MMU を使ってポインタが無効であることを検出させ、ページ・フォルト・ハンドラを使ってそのポインタが無効なものであると判断する
 
-Likewise, if a pointer passed by the application is invalid
-(e.g. unmapped, read-only for cases where it is used for writing), it
-could "crash" the kernel. There two approaches that could be used:
+これらは魅力的に見えるかもしれませんが、二つ目の方法はそれほど簡単には実装できません。
+ページ・フォルト・ハンドラは、フォルトしたアドレス（アクセスしたアドレス）とフォルトさせたアドレス（アクセスを行なった命令が格納されているアドレス）、そしてユーザ空間からの情報を使用してページ・フォルトした原因を特定します：
 
-.. slide:: Invalid pointers handling approaches
-   :inline-contents: True
-   :level: 2
+   * 「コピー・オン・ライト」や「デマンド・ページング」や「スワップ」:フォルトしたアドレスとフォルトさせたアドレスは共にユーザ空間にある ; フォルト・アドレスは有効である（ユーザ空間のアドレスに対して確認される）
+   
+   * システム・コールで使用する無効なポインタ： フォルトさせたアドレスはカーネル空間にある；フォルトしたアドレスはユーザ空間にあり、これが無効である
 
-   * Check the pointer against the user address space before using it,
-     or
+   * カーネルのバグ（カーネルが無効なポインタにアクセスする）：上と同じ
 
-   * Avoid checking the pointer and rely on the MMU to detect when the
-     pointer is invalid and use the page fault handler to determine
-     that the pointer was invalid
+But in the last two cases we don't have enough information to determine the cause of the fault.
 
+In order to solve this issue Linux uses special APIs (e.g :c:func:`copy_to_user`) to accesses user space that are specially crafted:
 
-Although it sounds tempting, the second approach is not that easy to
-implement. The page fault handler uses the fault address (the address
-that was accessed), the faulting address (the address of the
-instruction that did the access) and information from the user address
-space to determine the cause:
+   * The exact instructions that access user space are recorded in a table (exception table)
 
-.. slide:: Page fault handling
-   :inline-contents: True
-   :level: 2
-
-      * Copy on write, demand paging, swapping: both the fault and
-	faulting addresses are in user space; the fault address is
-	valid (checked against the user address space)
-
-      * Invalid pointer used in system call: the faulting address is
-	in kernel space; the fault address is in user space and it is
-	invalid
-
-      * Kernel bug (kernel accesses invalid pointer): same as above
-
-But in the last two cases we don't have enough information to
-determine the cause of the fault.
-
-In order to solve this issue Linux uses special APIs (e.g
-:c:func:`copy_to_user`) to accesses user space that are specially
-crafted:
-
-.. slide:: Marking kernel code that accesses user space
-   :inline-contents: True
-   :level: 2
-
-   * The exact instructions that access user space are recorded in a
-     table (exception table)
-
-   * When a page fault occurs the faulting address is checked against
-     this table
+   * When a page fault occurs the faulting address is checked against this table
 
 
 Although the fault handling case may be more costly overall depending
