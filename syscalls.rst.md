@@ -150,54 +150,39 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
    * ポインタを直接確認するのではなく、MMU を使ってポインタが無効であることを検出させ、ページ・フォルト・ハンドラを使ってそのポインタが無効なものであると判断する
 
 これらは魅力的に見えるかもしれませんが、二つ目の方法はそれほど簡単には実装できません。
-ページ・フォルト・ハンドラは、フォルトしたアドレス（アクセスしたアドレス）とフォルトさせたアドレス（アクセスを行なった命令が格納されているアドレス）、そしてユーザ空間からの情報を使用してページ・フォルトした原因を特定します：
+ページ・フォルト・ハンドラは「フォルトしたアドレス」（アクセスしたアドレス）と「フォルトさせたアドレス」（アクセスを行なった命令が格納されているアドレス）、そしてユーザ空間からの情報を使用してページ・フォルトした原因を特定します：
 
-   * 「コピー・オン・ライト」や「デマンド・ページング」や「スワップ」:フォルトしたアドレスとフォルトさせたアドレスは共にユーザ空間にある ; フォルト・アドレスは有効である（ユーザ空間のアドレスに対して確認される）
+   * 「コピー・オン・ライト」や「デマンド・ページング」や「スワップ」:フォルトしたアドレスとフォルトさせたアドレスは共にユーザ空間にある ; フォルトしたアドレスは有効なポインタである（ユーザ空間のアドレスに対して確認される）
    
-   * システム・コールで使用する無効なポインタ： フォルトさせたアドレスはカーネル空間にある；フォルトしたアドレスはユーザ空間にあり、これが無効である
+   * システム・コールで使用する無効なポインタ：フォルトさせたアドレスはカーネル空間にある；フォルトしたアドレスはユーザ空間にあり、これが無効なポインタである
 
    * カーネルのバグ（カーネルが無効なポインタにアクセスする）：上と同じ
 
-But in the last two cases we don't have enough information to determine the cause of the fault.
+しかしながら、二番目と三番目の場面にはフォルトした原因を特定するために必要な情報が不足しています。
 
-In order to solve this issue Linux uses special APIs (e.g :c:func:`copy_to_user`) to accesses user space that are specially crafted:
+このような場合を解決するために Linux では特別な API（例えば ``copy_to_user()`` 関数）を使って特別に作成されたユーザ空間にアクセスします：
 
-   * The exact instructions that access user space are recorded in a table (exception table)
+   * ユーザ空間にアクセスする実際の命令は「例外テーブル」に記録されている
 
-   * When a page fault occurs the faulting address is checked against this table
+   * ページ・フォルトが発生したら、この例外テーブルと「フォルトさせたアドレス」を照合する
 
+フォルトを処理する場合はアドレス空間のサイズ vs 例外テーブルのサイズの結果によっては全体的にコストが高くなる可能性があり、さらに複雑になりますが、一般的な処理として最適化されているため Linux では使用が推奨されたものになっています。
 
-Although the fault handling case may be more costly overall depending
-on the address space vs exception table size, and it is more complex,
-it is optimized for the common case and that is why it is preferred
-and used in Linux.
+##### ポインタを確認する vs フォルト処理を使うコスト分析
 
-
-.. slide:: Cost analysis for pointer checks vs fault handling
-   :inline-contents: True
-   :level: 2
-
-   +------------------+-----------------------+------------------------+
-   | Cost             |  Pointer checks       | Fault handling         |
-   +==================+=======================+========================+
-   | Valid address    | address space search  | negligible             |
-   +------------------+-----------------------+------------------------+
-   | Invalid address  | address space search  | exception table search |
-   +------------------+-----------------------+------------------------+
+コスト| ポインタを確認する方法 | フォルト処理を使う方法
+------------ | ------------- | ------------
+有効なアドレス | アドレス空間の検索 | 無視できるほど小さい
+無効なアドレス | アドレス空間の検索 | 例外テーブルの検索
 
 
-Virtual Dynamic Shared Object (VDSO)
-====================================
+### 仮想動的共有オブジェクト（vDSO）
 
-The VDSO mechanism was born out of the necessity of optimizing the
-system call implementation, in a way that does not impact libc with
-having to track the CPU capabilities in conjunction with the kernel
-version.
+The VDSO mechanism was born out of the necessity of optimizing the system call implementation, in a way that does not impact libc with having to track the CPU capabilities in conjunction with the kernel version.
 
-For example: x86 has two ways of issuing system calls: int 0x80 and
-sysenter. The later is significantly faster so it should be used when
-available. However, it is only available for processors newer than
-Pentium II and only for kernel versions greater than 2.6.
+For example: x86 has two ways of issuing system calls: int 0x80 and sysenter.
+The later is significantly faster so it should be used when available.
+However, it is only available for processors newer than Pentium II and only for kernel versions greater than 2.6.
 
 With VDSO the system call interface is decided by the kernel:
 
