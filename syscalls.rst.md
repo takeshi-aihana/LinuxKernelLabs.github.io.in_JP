@@ -1,4 +1,5 @@
 * [目次](/README.md#目次index)
+* [はじめに](/intro.rst.md#はじめに)
 
 ---
 
@@ -178,7 +179,7 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
 
 ### 仮想動的共有オブジェクト（vDSO）
 
-「VDSO（*Virtual Dynamic Shared Object*）」のメカニズムはシステム・コールの実装を最適化する必要性の中から生まれたもので、カーネルのバージョンと共に CPU の能力を追跡する必要のある glibc に影響は及びません。
+「vDSO（*Virtual Dynamic Shared Object*）」のメカニズムはシステム・コールの実装を最適化する必要性の中から生まれたもので、カーネルのバージョンと共に CPU の能力を追跡する必要のある glibc に影響は及びません。
 
 例えば： x86 にはシステム・コールを発行する方法が二つあります： ``int 0x80`` と ``sysenter`` です。
 後者は非常に高速なため、利用できる時に利用すべき方法です。
@@ -194,58 +195,36 @@ vDSO を使うシステム・コールのインタフェースはカーネルに
 
 * vDSO の調査の動画 (**syscalls-vdso.cast**) HERE
 
+vDSO の興味深い開発が「仮想システム・コール（``vsyscall``）」で、これはユーザ空間から直接実行できるシステム・コールです。
+これらの ``vsyscall`` も vDSO の一部であり、vDSO のページから静的なデータ、または vDSO ページにある個別の Read/Write のマップでカーネルが変更を加えたデータのどちらかにアクセスします。
+``vsyscall`` として実装されたシステム・コールの例としては ``getpid()`` や ``gettimeofday()`` があります。
 
-An interesting development of the VDSO are the virtual system calls
-(vsyscalls) which run directly from user space. These vsyscalls are
-also part of VDSO and they are accessing data from the VDSO page that
-is either static or modified by the kernel in a separate read-write
-map of the VDSO page. Examples of system calls that can be implemented
-as vsyscalls are: getpid or gettimeofday.
+Virtual System Calls (vsyscalls)
 
+   * ユーザ空間から直接実行する「システム・コール」で、vDSO の一部である
 
-.. slide:: Virtual System Calls (vsyscalls)
-   :inline-contents: True
-   :level: 2
+   * 静的なデータ（例えば ``getpid()``)
 
-   * "System calls" that run directly from user space, part of the VDSO
-
-   * Static data (e.g. getpid())
-
-   * Dynamic data update by the kernel a in RW map of the VDSO
-     (e.g. gettimeofday(), time(), )
+   * vDSO にあるR/W のマップでカーネルが動的に更新したデータ（例えば ``gettimeofday()``、``time()``）
 
 
-Accessing user space from system calls
-=====================================
+### システム・コールからユーザ空間へのアクセス
 
-As we mentioned earlier, user space must be accessed with special APIs
-(:c:func:`get_user`, :c:func:`put_user`, :c:func:`copy_from_user`,
-:c:func:`copy_to_user`) that check wether the pointer is in user space
-and also handle the fault if the pointer is invalid. In case of invalid
-pointers they return a non zero value.
+既に説明しているとおり、ポインタがユーザ空間のアドレスを指しているかどうかをチェックし、さらにそのポインタが無効であった場合に発行されるフォルトを処理したい場合は、特別な API（``get_user()``、``put_user()``、``copy_from_user()``、``copy_to_user()``）を使ってユーザ空間にアクセスする必要があります。
+これらの API は、ポインタが無効な場合はゼロ以外の数値を返します。
 
-.. slide:: Accessing user space from system calls
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
-
+```c
       /* OK: return -EFAULT if user_ptr is invalid */
       if (copy_from_user(&kernel_buffer, user_ptr, size))
           return -EFAULT;
 
       /* NOK: only works if user_ptr is valid otherwise crashes kernel */
       memcpy(&kernel_buffer, user_ptr, size);
+```
 
+x86 で実装されている ``vsyscall`` の中で最も簡単な API である ``get_user()`` を例に見てみることにしましょう：
 
-Let's examine the simplest API, get_user, as implemented for x86:
-
-.. slide:: get_user implementation
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
-
+```c
       #define get_user(x, ptr)                                          \
       ({                                                                \
         int __ret_gu;                                                   \
@@ -259,43 +238,28 @@ Let's examine the simplest API, get_user, as implemented for x86:
         (x) = (__force __typeof__(*(ptr))) __val_gu;                    \
         __builtin_expect(__ret_gu, 0);                                  \
       })
+```
 
+The implementation uses inline assembly, that allows inserting ASM sequences in C code and also handles access to / from variables in the ASM code.
 
-The implementation uses inline assembly, that allows inserting ASM
-sequences in C code and also handles access to / from variables in the
-ASM code.
-
-Based on the type size of the x variable, one of __get_user_1,
-__get_user_2 or __get_user_4 will be called. Also, before executing
-the assembly call, ptr will be moved to the first register EAX while
-after the completion of assembly part the value of EAX will be moved
-to __ret_gu and the EDX register will be moved to __val_gu.
+Based on the type size of the x variable, one of __get_user_1, get_user_2 or __get_user_4 will be called.
+Also, before executing the assembly call, ptr will be moved to the first register EAX while after the completion of assembly part the value of EAX will be moved to __ret_gu and the EDX register will be moved to __val_gu.
 
 It is equivalent to the following pseudo code:
 
 
-.. slide:: get_user pseudo code
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
-
+```c
       #define get_user(x, ptr)                \
           movl ptr, %eax                      \
 	  call __get_user_1                   \
 	  movl %edx, x                        \
 	  movl %eax, result                   \
-
+```
 
 
 The __get_user_1 implementation for x86 is the following:
 
-.. slide:: get_user_1 implementation
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: none
-
+```asm
       .text
       ENTRY(__get_user_1)
           mov PER_CPU_VAR(current_task), %_ASM_DX
@@ -316,6 +280,7 @@ The __get_user_1 implementation for x86 is the following:
       END(bad_get_user)
 
       _ASM_EXTABLE(1b,bad_get_user)
+```
 
 The first two statements check the pointer (which is stored in EDX)
 with the addr_limit field of the current task (process) descriptor to
@@ -409,4 +374,10 @@ is accessed by the fault handler:
 All it does is to set the return address to the one in the to field of
 the exception table entry which, in case of the get_user exception
 table entry, is bad_get_user which return -EFAULT to the caller.
+
+---
+
+* [目次](/README.md#目次index)
+
+
 
