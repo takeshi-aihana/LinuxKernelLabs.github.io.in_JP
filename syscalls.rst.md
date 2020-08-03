@@ -186,7 +186,7 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
 
 vDSO を使うシステム・コールのインタフェースはカーネルによって決められます：
 
-   * システム・コールを発行する命令のストリームは、カーネルによってELF共有オブジェクトとしてフォーマットされた特別なメモリ領域に生成される
+   * システム・コールを発行する命令の流れは、カーネルにより ELF 共有オブジェクトとしてフォーマットされた特別なメモリ領域に生成される
 
    * このメモリ領域はユーザのアドレス空間の終端に向かってマップされる
 
@@ -207,7 +207,7 @@ vDSO の興味深い開発が「仮想システム・コール（``vsyscall``）
 
 ### システム・コールからユーザ空間へのアクセス
 
-既に説明しているとおり、ポインタがユーザ空間のアドレスを指しているかどうかをチェックし、さらにそのポインタが無効であった場合に発行されるフォルトを処理したい場合は、特別な API（``get_user()``、``put_user()``、``copy_from_user()``、``copy_to_user()``）を使ってユーザ空間にアクセスする必要があります。
+既に説明したとおり、ポインタがユーザ空間のアドレスを指しているかどうかをチェックし、さらにそのポインタが無効であった場合に発行されるフォルトを処理したい場合は、特別な API（``get_user()``、``put_user()``、``copy_from_user()``、``copy_to_user()``）を使ってユーザ空間にアクセスする必要があります。
 これらの API は、ポインタが無効な場合はゼロ以外の数値を返します。
 
 ```c
@@ -219,7 +219,7 @@ vDSO の興味深い開発が「仮想システム・コール（``vsyscall``）
       memcpy(&kernel_buffer, user_ptr, size);
 ```
 
-x86 で実装されている ``vsyscall`` の中で最も簡単な API である ``get_user()`` を例に見てみることにしましょう：
+ここでは x86 で実装されている ``vsyscall`` の中で最も簡単な API である ``get_user()`` を例に見てみることにしましょう：
 
 ```c
       #define get_user(x, ptr)                                          \
@@ -237,12 +237,13 @@ x86 で実装されている ``vsyscall`` の中で最も簡単な API である
       })
 ```
 
-The implementation uses inline assembly, that allows inserting ASM sequences in C code and also handles access to / from variables in the ASM code.
+この実装はインライン・アセンブラを使用しています。これにより C言語のコードの中にアセンブラ（ASM）を挿入することができ、さらにアセンブラのコードの中にある変数を参照したり、あるいは逆にC言語の変数をアクセスすることも可能です。
 
-Based on the type size of the x variable, one of __get_user_1, get_user_2 or __get_user_4 will be called.
-Also, before executing the assembly call, ptr will be moved to the first register EAX while after the completion of assembly part the value of EAX will be moved to __ret_gu and the EDX register will be moved to __val_gu.
+このインライン・アセンブラは変数 ``x`` の型のサイズに応じて ``__get_user_1()`` または ``__get_user_2()`` または ``__get_user_4()`` 関数のいずれかを呼び出します。
 
-It is equivalent to the following pseudo code:
+またアセンブラの関数を呼び出す前に ``ptr`` が最初の EAX レジスタに MOVE し、関数から戻ってきたら EAX レジスタに格納されたの値を ``__ret_gu`` に MOVE し、EDX レジスタの値は ``__val_gu`` に MOVE しています。
+
+この処理は、次に示す擬似コードと等価です：
 
 
 ```c
@@ -254,7 +255,7 @@ It is equivalent to the following pseudo code:
 ```
 
 
-The __get_user_1 implementation for x86 is the following:
+``__get_user_1()`` の x86 アーキテクチャでの実装は次のとおりです：
 
 ```asm
       .text
