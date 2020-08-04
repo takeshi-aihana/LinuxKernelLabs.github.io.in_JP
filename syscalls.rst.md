@@ -150,7 +150,7 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
    * ポインタを直接確認するのではなく、MMU を使ってポインタが無効であることを検出させ、ページ・フォルト・ハンドラを使ってそのポインタが無効なものであると判断する
 
 これらは魅力的に見えるかもしれませんが、二つ目の方法はそれほど簡単には実装できません。
-ページ・フォルト・ハンドラは「フォルトしたアドレス」（アクセスしたアドレス）と「フォルトさせたアドレス」（アクセスを行なった命令が格納されているアドレス）、そしてユーザ空間からの情報を使用してページ・フォルトになった原因を特定します：
+ページ・フォルト・ハンドラは「フォルトしたアドレス（**Fault Address**）」（アクセスしたアドレス）と「フォルトさせたアドレス（**Faulting Address**）」（アクセスを行なった命令が格納されているアドレス）、そしてユーザ空間からの情報を使用してページ・フォルトになった原因を特定します：
 
    * 「コピー・オン・ライト」や「デマンド・ページング」や「スワップ」:フォルトしたアドレスとフォルトさせたアドレスは共にユーザ空間にある ; フォルトしたアドレスは有効なポインタである（ユーザ空間のアドレスに対して確認される）
    
@@ -237,11 +237,11 @@ vDSO の興味深い開発が「仮想システム・コール（``vsyscall``）
       })
 ```
 
-この実装はインライン・アセンブラを使用しています。これにより C言語のコードの中にアセンブラ（ASM）を挿入することができ、さらにアセンブラのコードの中にある変数を参照したり、あるいは逆にC言語の変数をアクセスすることも可能です。
+この実装はインライン・アセンブラを使用しています。これにより C言語のコードの中にアセンブラ（ASM）を挿入することができ、さらにアセンブラのコードの中にある変数を参照したり、あるいは逆にC言語の変数にアクセスすることも可能です。
 
 このインライン・アセンブラは変数 ``x`` の型のサイズに応じて ``__get_user_1()`` または ``__get_user_2()`` または ``__get_user_4()`` 関数のいずれかを呼び出します。
 
-またアセンブラの関数を呼び出す前に ``ptr`` が最初の EAX レジスタに MOVE し、関数から戻ってきたら EAX レジスタに格納されたの値を ``__ret_gu`` に MOVE し、EDX レジスタの値は ``__val_gu`` に MOVE しています。
+またアセンブラの関数を呼び出す前に ``ptr`` を一つ目の EAX レジスタに MOVE し、関数から戻ってきたら EAX レジスタに格納された値を ``__ret_gu`` に MOVE し、EDX レジスタの値を ``__val_gu`` に MOVE しています。
 
 この処理は、次に示す擬似コードと等価です：
 
@@ -255,7 +255,7 @@ vDSO の興味深い開発が「仮想システム・コール（``vsyscall``）
 ```
 
 
-``__get_user_1()`` の x86 アーキテクチャでの実装は次のとおりです：
+x86 アーキテクチャでの ``__get_user_1()`` の実装は次のとおりです：
 
 ```asm
       .text
@@ -280,23 +280,15 @@ vDSO の興味深い開発が「仮想システム・コール（``vsyscall``）
       _ASM_EXTABLE(1b,bad_get_user)
 ```
 
-The first two statements check the pointer (which is stored in EDX)
-with the addr_limit field of the current task (process) descriptor to
-make sure that we don't have a pointer to kernel space.
+先頭にある二行の ASM 命令は、現在のタスク（プロセス）のディスクリプタにある ``addr_limit`` メンバを使って EDX レジスタに格納されたポインタの妥当性をチェックし、カーネル空間を指しているポインタが無いことを確認しています。
 
-Then, SMAP is disabled, to allow access to user from kernel, and the
-access to user space is done with the instruction at the 1: label. EAX
-is then zeroed to mark success, SMAP is enabled, and the call returns.
+すると SMAP が無効になり、カーネル空間からユーザ空間にアクセスできるようになり、``1:`` のラベルが付いた命令で実際にユーザ空間にアクセスしています。
 
-The movzbl instruction is the one that does the access to user space
-and its address is captured with the 1: label and stored in a special
-section:
+次に EAX レジスタに０を格納してアクセス成功の返値とし、SMAP が有効になって、この関数を呼び出し元へ戻ります。
 
-.. slide:: Exception table entry
-   :inline-contents: True
-   :level: 2
+``movzbl`` 命令はユーザ空間にアクセスする命令の一つで、アクセスする先のアドレスは ``1:`` のラベルが付いた命令で取得され、特別なセクションに格納されます。
 
-   .. code-block:: c
+```c
 
       /* Exception table entry */
       # define _ASM_EXTABLE_HANDLE(from, to, handler)           \
@@ -309,24 +301,15 @@ section:
 
       # define _ASM_EXTABLE(from, to)                           \
         _ASM_EXTABLE_HANDLE(from, to, ex_handler_default)
+```
+
+アクセスしたユーザ空間のアドレスごとに「例外テーブル」の中には一個のエントリがあり、これはフォルトした場合にジャンプする先の「フォルトさせたアドレス（**Faulting Address**）」（from）とジャンプの理論を実装したハンドラ関数で構成されています。
+これらのアドレスは全て例外テーブルとの相対形式で32-ビット長のメモリに格納されているので、32-ビットと 64-ビットのカーネルの両方で動作します。
+
+例外テーブルにある全てのエントリは、リンカ・スクリプトによって ``__ex_table`` セクションの中に集められます：
 
 
-For each address that accesses user space we have an entry in the
-exception table, that is made up of: the faulting address(from), where
-to jump to in case of a fault, and a handler function (that implements
-the jump logic). All of these addresses are stored on 32bit in
-relative format to the exception table, so that they work for both 32
-and 64 bit kernels.
-
-
-All of the exception table entries are then collected in the
-__ex_table section by the linker script:
-
-.. slide:: Exception table building
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
+```c
 
       #define EXCEPTION_TABLE(align)					\
 	. = ALIGN(align);						\
@@ -335,18 +318,13 @@ __ex_table section by the linker script:
 		KEEP(*(__ex_table))					\
 		VMLINUX_SYMBOL(__stop___ex_table) = .;			\
 	}
+```
+
+The section is guarded with __start___ex_table and __stop___ex_table symbols, so that it is easy to find the data from C code.
+This table is accessed by the fault handler:
 
 
-The section is guarded with __start___ex_table and __stop___ex_table
-symbols, so that it is easy to find the data from C code. This table
-is accessed by the fault handler:
-
-
-.. slide:: Exception table handling
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
+```c
 
       bool ex_handler_default(const struct exception_table_entry *fixup,
                               struct pt_regs *regs, int trapnr)
@@ -367,11 +345,9 @@ is accessed by the fault handler:
           handler = ex_fixup_handler(e);
           return handler(e, regs, trapnr);
       }
+```
 
-
-All it does is to set the return address to the one in the to field of
-the exception table entry which, in case of the get_user exception
-table entry, is bad_get_user which return -EFAULT to the caller.
+All it does is to set the return address to the one in the to field of the exception table entry which, in case of the get_user exception table entry, is bad_get_user which return -EFAULT to the caller.
 
 ---
 
