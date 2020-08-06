@@ -10,3 +10,5 @@ Japanese translation of [Linux Kernel Teaching](https://linux-kernel-labs.github
 
 * [はじめに](/intro.rst.md#はじめに)
 
+* [システム・コール](/syscalls.rst.md#システム・コール)
+
