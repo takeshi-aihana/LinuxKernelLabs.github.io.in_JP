@@ -466,7 +466,7 @@ Linux のメモリ管理は、次のような仕組みを扱うため複雑な�
 Linux のブロック I/O サブシステムはブロック・デバイスからデータの読み込み、またはブロック・デバイスへデータの書き込みを処理します：
 具体的にはブロック I/O 要求の作成、ブロック I/O 要求の変換（例えば、ソフトウェア RAID や LVM の場合)、I/O 要求の合体と並び替え、そしていろいろな I/O スケジューラを介して I/O 要求をブロック・デバイスのドライバにスケジューリングしながら送信する
 
-![](images/Fig9-BlockIOManagement.png)
+![](images/Fig9-BlockIOManagement_JP.png)
 
 
 ##### 仮想ファイルシステム・スイッチ
@@ -482,7 +482,7 @@ Linux 仮想ファイルシステム・スイッチ（``VFS``）は、いろい�
 
 * ``superblock`` - フォーマットしたファイルシステムのプロパティを表す（例えば、ブロック数、ブロック・サイズ、ディスク上の root ディレクトリの位置、暗号化、など）
 
-![](images/Fig10-VFSwitch.png)
+![](images/Fig10-VFSwitch_JP.png)
 
 さらに Linux の VFS は、次に示すような複雑なキャッシュのメカニズムを実装しています：
 
@@ -495,7 +495,7 @@ Linux 仮想ファイルシステム・スイッチ（``VFS``）は、いろい�
 
 ##### ネットワーク・スタック
 
-![](images/Fig11-NetworkingStack.png)
+![](images/Fig11-NetworkingStack_JP.png)
 
 
 #### Linux のセキュリティ・モジュール
