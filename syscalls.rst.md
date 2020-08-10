@@ -18,7 +18,7 @@
 
 カーネルの高位にあるシステム・コールは、カーネルからユーザ空間にあるアプリケーションに提供される「サービス群」であり、名前と引数と返り値を持つ関数呼び出しとして記述されている点でいうと、ユーザ空間にあるライブラリの API に似ています。
 
-![](images/Fig12-LinuxSystemCallsImplementation.png)
+![](images/Fig12-LinuxSystemCallsImplementation_JP.png)
 
 しかし、よく見てみると、システム・コールは実際には関数呼び出しではなく、次のようなことを実行する（アーキテクチャとカーネル固有の）特別なアセンブリ命令であることがわかります：
 
@@ -52,7 +52,7 @@ CPU の実行モードがユーザ・モードからカーネル・モードに�
 
 ###### ***Linuxのシステム・コールをセットアップして処理する例***
 
-![](images/Fig13-LinuxSystemCallSetupAndHandling.png)
+![](images/Fig13-LinuxSystemCallSetupAndHandling_JP.png)
 
 システム・コール・ディスパッチャの目的はシステム・コールの識別番号を確認し、そのシステム・コールに関連づけられたカーネルの関数を実行することです。
 
