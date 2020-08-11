@@ -18,24 +18,24 @@
 
 ### 「割り込み」とは何か？
 
-「割り込み」とはプログラムの通常の実行フローを変更するイベントで、ハードウェア・デバイスや CPU 自身によって生成されます。
+「割り込み」とはプログラムの通常の実行フローを変更する1個のイベントであり、いろいろなハードウェア・デバイスや CPU 自身によって生成されます。
 
 割り込みは、その生成方法に基づいて二つのグループに分類することができます：
 
-   * **同期**（*synchronous*）： これは実行中の命令が生成する割り込み
+   1. 同期方法
 
-   * **非同期**（*asynchronous*）：これは外部のイベントが生成する割り込み
+     * **同期型**（*synchronous*）： これは実行中の命令が生成する割り込み
 
-   * **マスク可能**（*maskable*）
-     * これは無視することができる割り込み
-     * CPU の ``INT`` ピン経由で発行される割り込み
+     * **非同期型**（*asynchronous*）：これは外部のイベントが生成する割り込み
 
-   * **マスク不可**（*non-maskable*）
-     * これは無視できない割り込み
-     * CPU の ``NMI`` ピン経由で発行される割り込み
+   1. マスク可否
 
-通常、「例外」と呼ばれる同期型の割り込みは、一個の命令を実行している過程で、CPU 自身が検出したさまざまな状態を扱います。
-例えば「０による除算」（*Divide by Zero*）やシステムコールは例外です。
+     * **マスク可能**（*maskable*）： これは無視することができる割り込みで、CPU の ``INT`` ピン経由で発行される
+
+     * **マスク不可**（*non-maskable*）：これは無視できない割り込みで、CPU の ``NMI`` ピン経由で発行される
+
+通常、「例外」と呼ばれる同期型の割り込みは、一個の命令を実行している過程でプロセッサ自身が検出したさまざまな状態を扱います。
+例えば「０による除算」（*Divide by Zero*）やシステムコールは「例外」に該当します。
 
 通常、「割り込み」と呼ばれる非同期型の割り込みはいろいろな I/O デバイスによって生成される外部イベントです。
 例えばネットワーク・カードは割り込みを生成してパケットが到着したことを通知します。
@@ -45,23 +45,26 @@
 
 例外の生成元は二つあります:
 
-   * CPU が検知した場合：
+   * プロセッサの場合：
 
-     - **faults**
-     - **traps**
-     - **aborts**
+     - **fault**
+     - **trap**
+     - **abort**
 
-   * プログラムが検知した場合
+   * プログラムの場合
 
-     - **int *N* **
+     - **int N**
 
-Processor detected exceptions are raised when an abornmal condition is detected while executing an instruction.
+CPU が命令を実行中に異常状態（*Abnormal Condition*) を検出すると、プロセッサが検出したいろいろな例外が発生します。
 
-A fault is a type of exception that is reported before the execution of the instruction and can be usually corrected.
-The saved EIP is the address of the instruction that caused the fault, so after the fault is corrected the program can re-execute the faulty instruction. (e.g page fault).
+例外の一種である「フォルト（**fault**）」は CPU が命令を実行する前に発生し、通常は修正が可能です。
+保存された ``EIP`` にはフォルト発生の原因となった命令のアドレスが格納されているので、プログラムはこのフォルトを修正した後に問題のあった命令を再び実行することができます。
+この例外は、例えばページ・フォルトなどがあります。
 
-A trap is a type of exception that is reported after the execution of the instruction in which the exception was detected.
-The saved EIP is the address of the instruction after the instuction that caused the trap. (e.g debug trap).
+「トラップ（**trap**）」も例外の一種で、これは例外が検出された命令を実行した後に発生します。
+保存された ``EIP`` にはトラップ発生の原因となった命令の次の命令のアドレスが格納されます。
+この例外は、例えばデバッグのトラップがあります。
+
 
 
 #### ハードウェアの概念
