@@ -72,33 +72,13 @@ CPU が命令を実行中に異常状態（*Abnormal Condition*) を検出する
 
 ##### Programmable Interrupt Controller
 
+![](images/Fig14-Hardware_PIC.png)
 
-.. slide:: Hardware (PIC)
-   :inline-contents: True
-   :level: 2
+A device supporting interrupts has an output pin used for signalling an Interrupt ReQuest.
+IRQ pins are connected to a device named Programmable Interrupt Controller (PIC) which is connected to CPU's INTR pin.
 
-   .. ditaa::
-        
-        +-----------+   NMI
-        |           |
-        |           |<----------+
-        |           |
-        |           |           +------------+
-        |           |           |            |   IRQ0
-        |           |           |            |<------------+ device0
-        |    CPU    |           |            |   IRQ1
-        |           |   INTR    |     PIC    |<------------+ device1
-        |           |<----------+            |   IRQN
-        |           |           |            |<------------+ deviceN
-        |           |           |            |
-        +-----------+           +------------+
-        
-A device supporting interrupts has an output pin used for signalling an Interrupt ReQuest. IRQ
-pins are connected to a device named Programmable Interrupt Controller (PIC) which is connected
-to CPU's INTR pin.
-
-A PIC usually has a set of ports used to exchange information with the CPU. When a device
-connected to one of the PIC's IRQ lines needs CPU attention the following flow happens:
+A PIC usually has a set of ports used to exchange information with the CPU.
+When a device connected to one of the PIC's IRQ lines needs CPU attention the following flow happens:
 
    * device raises an interrupt on the corresponding IRQn pin
    * PIC converts the IRQ into a vector number and writes it to a port for CPU to read
@@ -106,54 +86,18 @@ connected to one of the PIC's IRQ lines needs CPU attention the following flow h
    * PIC waits for CPU to acknowledge an interrupt
    * CPU handles the interrupt
 
-Will see later how the CPU handles the interrupt. Important to notice is that by design PIC won't raise
-another interrupt until the CPU acknowledged the current interrupt.
+Will see later how the CPU handles the interrupt.
+Important to notice is that by design PIC won't raise another interrupt until the CPU acknowledged the current interrupt.
 
-Each IRQ line can be individually disabled. This allows simplifying design by making sure that
-interrupt handlers are always executed serially.
+Each IRQ line can be individually disabled.
+This allows simplifying design by making sure that interrupt handlers are always executed serially.
 
 Advanced Programmable Interrupt Controller
 ------------------------------------------
 
-.. slide:: Hardware (APIC)
-   :inline-contents: True
-   :level: 2
+![](images/Fig15-Hardware_APIC.png)
 
-   .. ditaa::
-
-
-              CPU0                             CPU1
-        +-------------+                   +-------------+
-        |             |                   |             |
-        |             |local IRQs         |             |local IRQs
-        |             +----------         |             +----------
-        |             |                   |             |
-        |  local APIC |                   |  local APIC |
-        |             | LINT0, LINT1      |             | LINT0, LINT1
-        |             +-------------      |             +-------------
-        |             |                   |             |
-        +-------+-----+                   +------+------+
-                |                                |
-                |                                |
-                |                                |
-        +-------+--------------------------------+------+
-        |                                               |
-        |    Interrupt Controller Communication BUS     |
-        +----------------------+------------------------+
-                               |
-                               |
-                      +--------+--------+
-                      |                 |
-                      |    I/O APIC     |
-                      |                 |
-                      +--------+--------+
-                               |
-                               |
-                               |
-                      External interrupts
-
-With multicore systems, each core has a local APIC used to process interrupts
-from locally connected devices like timers or thermals sensors.
+With multicore systems, each core has a local APIC used to process interrupts from locally connected devices like timers or thermals sensors.
 
 I/O APIC is used to distribute IRQ from external devices to CPU cores.
 
@@ -162,9 +106,7 @@ After discussing the hardware, now let's see how the processor handles an interr
 Interrupt Control
 -----------------
 
-In order to synchronize access to shared data between the interrupt handler
-and other potential concurrent activities such as driver initialization or
-driver data processing, it is often required to enable and disable interrupts in
+In order to synchronize access to shared data between the interrupt handler and other potential concurrent activities such as driver initialization or driver data processing, it is often required to enable and disable interrupts in
 a controlled fashion.
 
 This can be accomplished at several levels:
@@ -196,60 +138,20 @@ In this section we will discuss how Linux handles interrupts for the x86 archite
 Interrupt Descriptor Table
 --------------------------
 
-The interrupt descriptor table (IDT) associates each interrupt or exception
-identifier with a descriptor for the instructions that service the associated
-event. We will name the identifier as vector number and the associated
-instructions as interrupt/exception handler.
+The interrupt descriptor table (IDT) associates each interrupt or exception identifier with a descriptor for the instructions that service the associated event.
+We will name the identifier as vector number and the associated instructions as interrupt/exception handler.
 
 An IDT has the following characteristics:
-
-.. slide:: Interrupt Descriptor Table
-   :inline-contents: True
-   :level: 2
 
    * it is used as a jump table by the CPU when a given vector is triggered
    * it is an array of 256 x 8 bytes entries
    * may reside anywhere in physical memory
    * processor locates IDT by the means of IDTR
 
-Below we can find Linux IRQ vector layout. The first 32 entries are reserved
-for exceptions, vector 128 is used for sycall interface and the rest are
-used mostly for hardware interrupts handlers.
+Below we can find Linux IRQ vector layout.
+The first 32 entries are reserved for exceptions, vector 128 is used for sycall interface and the rest are used mostly for hardware interrupts handlers.
 
-.. slide:: Linux IRQ vector layout
-   :inline-contents: True
-   :level: 2
-
-   .. ditaa::
-
-    arch/x86/include/asm/irq_vectors.h
-         +------+
-         |  0   | 0..31, system traps and exceptions
-         +------+
-         |  1   |
-         +------+
-         |      |
-         +------+
-         |      |
-         |      |
-         |      |
-         +------+
-         |  32  |  32..127, device interrupts
-         +------+
-         |      |
-         |      |
-         |      |
-         +------+
-         | 128  |  int80 syscall interface
-         +------+
-         | 129  |  129..255, other interrupts
-         +------+
-         |      |
-         |      |
-         |      |
-         +------+
-         | 255  |
-         +------+
+![](images/Fig16-LinuxIRQVectorLayout.png)
 
 On x86 an IDT entry has 8 bytes and it is named gate. There can be 3 types of gates:
 
@@ -267,122 +169,37 @@ Lets have a look at several fields of an IDT entry:
    * T, represents the type of gate
    * DPL, minimum privilege required for using the segments content.
 
-.. slide:: Interrupt descriptor table entry (gate)
-   :inline-contents: True
-   :level: 2
-
-   .. ditaa::
-
-     63                            47         42                  32
-    +------------------------------+---+---+----+---+---------------+
-    |                              |   | D |    |   |               |
-    |         offset (16..31       | P | P |    | T |               |
-    |                              |   | L |    |   |               |
-    +------------------------------+---+---+----+---+---------------+
-    |                              |                                |
-    |       segment selector       |        offset (0..15)          |
-    |                              |                                |
-    +------------------------------+--------------------------------+
-     31                             15                             0
+![](images/Fig17-InterruptDescripterTableEntry.png)
 
 
 Interrupt handler address
 -------------------------
 
-In order to find the interrupt handler address we first need to find the start
-address of the code segment where interrupt handler resides. For this we
-use the segment selector to index into GDT/LDT where we can find the corresponding
-segment descriptor. This will provide the start address kept in the 'base' field.
+In order to find the interrupt handler address we first need to find the start address of the code segment where interrupt handler resides.
+For this we use the segment selector to index into GDT/LDT where we can find the corresponding segment descriptor.
+This will provide the start address kept in the 'base' field.
 Using base address and the offset we can now go at the start of the interrupt handler.
 
 
-.. slide:: Interrupt handler address
-   :inline-contents: True
-   :level: 2
-
-   .. ditaa::
-
-     
-                      Interrupt Descriptor
-          +----------------------------------------------+
-          |                                              |
-          |  +------------------+  +--------+  +------+  |
-          |  | segment selector |  |  offset|  |  PL  |  |
-          |  +----+-------------+  +---+----+  +------+  |
-          |       |                    |                 |
-          +----------------------------------------------+
-                  |                    |
-                  |                    |
-    +-------------+                    +---------------------------->  +---------------+
-    |                                                               ^  |  ISR address  |
-    |                   Segment Descriptor                          |  +---------------+
-    |     +----------------------------------------------+          |
-    |     |                                              |          |
-    +---->|  +------------------+  +--------+  +------+  |          |
-          |  |      base        |  |  limit |  |  PL  |  |          |
-          |  +---------+--------+  +--------+  +------+  |          |
-          |            |                                 |          |
-          +----------------------------------------------+          |
-                       |                                            |
-                       +--------------------------------------------+
+![](images/Fig18-InterruptHandlerAddress.png)
 
 
 Stack of interrupt handler
 --------------------------
 
-Similar with control transfer to a normal function, a control transfer
-to an interrupt or exception handler uses the stack to store the 
-information needed for returning to the interrupted code.
+Similar with control transfer to a normal function, a control transfer to an interrupt or exception handler uses the stack to store the information needed for returning to the interrupted code.
 
-As can be seen in the figure below, an interrupt pushes the EFLAGS register
-before saving the address of the interrupted instruction. Certain types
-of exceptions also cause an error code to be pushed on the stack to help
-debug the exception.
+As can be seen in the figure below, an interrupt pushes the EFLAGS register before saving the address of the interrupted instruction.
+Certain types of exceptions also cause an error code to be pushed on the stack to help debug the exception.
 
 
-.. slide:: Interrupt handler stack
-   :inline-contents: True
-   :level: 2
-
-   .. ditaa::
-
-
-        w/o privilege transition                     w/ privilege transition
-    
-    +   +---------------------+                      +---------------------+
-    |   |                     |                      |                     |
-    |   |                     | OLD SS:ESP           |      OLD SS         | NEW SS:ESP from TSS
-    |   +---------------------+                      +---------------------+
-    |   |                     |                      |                     |
-    |   |     OLD EFLAGS      |                      |     OLD ESP         |
-    |   +---------------------+                      +---------------------+
-    |   |                     |                      |                     |
-    |   |     OLD CS          |                      |     OLD EFLAGS      |
-    |   +---------------------+                      +---------------------+
-    |   |                     |                      |                     |
-    |   |     OLD EIP         |                      |       OLD CS        |
-    |   +---------------------+                      +---------------------+
-    |   |                     |                      |                     |
-    |   |    (error code)     | NEW SS:ESP           |      OLD EIP        |
-    |   +---------------------+                      +---------------------+
-    |   |                     |                      |                     |
-    |   |                     |                      |    (error code)     |  NEW SS:ESP
-    |   |                     |                      +---------------------+
-    |   |                     |                      |                     |
-    |   |                     |                      |                     |
-    |   |                     |                      |                     |
-    |   |                     |                      |                     |
-    |   |                     |                      |                     |
-    |   |                     |                      |                     |
-    |   |                     |                      |                     |
-    v   +---------------------+                      +---------------------+
+![](images/Fig19-InterruptHandlerStack.png)
 
 
 Handling an interrupt request
 -----------------------------
 
-After an interrupt request has been generated the processor runs a sequence of
-events that eventually ends up with running the kernel interrupt handler:
+After an interrupt request has been generated the processor runs a sequence of events that eventually ends up with running the kernel interrupt handler:
 
 
 .. slide:: Handling an interrupt request
@@ -403,11 +220,9 @@ events that eventually ends up with running the kernel interrupt handler:
 Returning from an interrupt handler
 -----------------------------------
 
-Most architectures offers special instructions to clean-up the stack and resume
-the execution after the interrupt handler has been executed. On x86 IRET is used
-to return from an interrupt handler. IRET is similar with RET except that IRET
-increments ESP by extra four bytes (because of the flags on stack) and moves the
-saved flags into EFLAGS register.
+Most architectures offers special instructions to clean-up the stack and resume the execution after the interrupt handler has been executed.
+On x86 IRET is used to return from an interrupt handler.
+IRET is similar with RET except that IRET increments ESP by extra four bytes (because of the flags on stack) and moves the saved flags into EFLAGS register.
 
 To resume the execution after an interrupt the following sequence is used (x86):
 
@@ -425,21 +240,15 @@ To resume the execution after an interrupt the following sequence is used (x86):
 Generic interrupt handling in Linux
 ===================================
 
-In Linux the interrupt handling is done in three phases: critical, immediate and
-deferred.
+In Linux the interrupt handling is done in three phases: critical, immediate and deferred.
 
-In the first phase the kernel will run the generic interrupt handler that
-determines the interrupt number, the interrupt handler for this particular
-interrupt and the interrupt controller. At this point any timing critical
-actions will also be performed (e.g. acknowledge the interrupt at the interrupt
-controller level). Local processor interrupts are disabled for the duration of
-this phase and continue to be disabled in the next phase.
+In the first phase the kernel will run the generic interrupt handler that determines the interrupt number, the interrupt handler for this particular interrupt and the interrupt controller.
+At this point any timing critical actions will also be performed (e.g. acknowledge the interrupt at the interrupt controller level).
+Local processor interrupts are disabled for the duration of this phase and continue to be disabled in the next phase.
 
-In the second phase all of the device drivers handler associated with this
-interrupt will be executed [#f1]_. At the end of this phase the interrupt controller's
-"end of interrupt" method is called to allow the interrupt controller to
-reassert this interrupt. The local processor interrupts are enabled at this
-point.
+In the second phase all of the device drivers handler associated with this interrupt will be executed [#f1]_.
+At the end of this phase the interrupt controller's "end of interrupt" method is called to allow the interrupt controller to reassert this interrupt.
+The local processor interrupts are enabled at this point.
 
 .. [#f1] Note that it is possible that one interrupt is associated with multiple
 	 devices and in this case it is said that the interrupt is
@@ -447,44 +256,21 @@ point.
 	 of the device driver to determine if the interrupt is target to it's
 	 device or not.
 
-Finally, in the last phase of interrupt handling interrupt context deferrable
-actions will be run. These are also sometimes known as "bottom half" of the
-interrupt (the upper half being the part of the interrupt handling that runs
-with interrupts disabled). At this point interrupts are enabled on the local
-processor.
-      
-.. slide:: Interrupt handling in Linux
-   :inline-contents: True
-   :level: 2
-
-   .. ditaa::
+Finally, in the last phase of interrupt handling interrupt context deferrable actions will be run.
+These are also sometimes known as "bottom half" of the interrupt (the upper half being the part of the interrupt handling that runs with interrupts disabled).
+At this point interrupts are enabled on the local processor.
 
 
-              phase 1
-        +----------------+
-        |    critical    |               phase 2
-        +----------------+         +-----------------+
-        |                |         |    immediate    |               phase 3
-        | - IRQ disabled |         +-----------------+          +----------------+
-        | - ACK IRQ      +-----+   |                 |          |   deferred     |
-        |                |     +---> - IRQ disabled  |          +----------------+
-        +----------------+         | - device handler|          |                |
-                                   | - EOI IRQ       +-----+    | - IRQ enabled  |
-                                   +-----------------+     +----> - execute later|
-                                                                |                |
-                                                                +----------------+
+![](images/Fig20-InterruptHandlingInLinux.png)
 
 
 Nested interrupts and exceptions
 --------------------------------
 
-Nesting interrupts is permitted on many architectures. Some architectures define
-interrupt levels that allow preemption of an interrupt only if the pending
-interrupt has a greater priority then the current (settable) level (e.g see
-ARM's priority mask).
+Nesting interrupts is permitted on many architectures.
+Some architectures define interrupt levels that allow preemption of an interrupt only if the pending interrupt has a greater priority then the current (settable) level (e.g see ARM's priority mask).
 
-In order to support as many architectures as possible, Linux has a more
-restrictive interrupt nesting implementation:
+In order to support as many architectures as possible, Linux has a more restrictive interrupt nesting implementation:
 
 .. slide:: IRQ nesting in Linux
    :inline-contents: True
@@ -498,28 +284,8 @@ restrictive interrupt nesting implementation:
 
 The diagram below shows the possible nesting scenarios:
 
-.. slide:: Interrupt/Exception nesting
-   :inline-contents: True
-   :level: 2
+![](images/Fig21-IRQ_NestingInLinux.png)
 
-   .. ditaa::
-
-                     +                                                 ^  +           ^
-                     |                                                 |  |           |
-                     | Syscall                                         |  | IRQi      |
-          User Mode  | Exception (e.g. page fault)                     |  |           |
-                     |                                                 |  |           |
-                     |                                                 |  |           |
-                  +-------------------------------------------------------+-----------+--
-                     |                                             iret|  |           |
-                     |                                                 |  |           |
-        Kernel Mode  v-------+      ^-------+                 ^--------+  +-----+     |
-                             |      |       |                 |                 |     |
-                         IRQi|  iret|   IRQj|             iret|             IRQj|     |
-                             v------+       v-----+     ^-----+                 v-----+
-                                                  |     |
-                                             IRQk | iret|
-                                                  v-----+
 
 Interrupt context
 -----------------
