@@ -68,41 +68,41 @@ CPU が命令を実行中に異常状態（*Abnormal Condition*) を検出する
 #### ハードウェアの概念
 
 
-##### Programmable Interrupt Controller
+##### 割り込みコントローラ（*Programmable Interrupt Controller*)
 
 ![](images/Fig14-Hardware_PIC.png)
 
-A device supporting interrupts has an output pin used for signalling an Interrupt ReQuest.
-IRQ pins are connected to a device named Programmable Interrupt Controller (PIC) which is connected to CPU's INTR pin.
+割り込みをサポートするデバイスは、割り込みの要求（*Interrupt ReQuest*）を発行する際に使用する出力ピンを持っています。
+この「``IRQ`` ピン」は「割り込みコントローラ（``PIC``）」と呼ばれるデバイスに接続され、さらに PIC は CPU の ``INTR`` ピンに接続しています。
 
-A PIC usually has a set of ports used to exchange information with the CPU.
-When a device connected to one of the PIC's IRQ lines needs CPU attention the following flow happens:
+通常 PIC には CPU と情報を交換する際に使用する複数のポートがあります。
+PIC が持つ IRQ 線の一つに接続している任意のデバイスが CPU から「注目」してもらいたい時、次の手順で処理が発生します：
 
-   * device raises an interrupt on the corresponding IRQn pin
-   * PIC converts the IRQ into a vector number and writes it to a port for CPU to read
-   * PIC raises an interrupt on CPU INTR pin
-   * PIC waits for CPU to acknowledge an interrupt
-   * CPU handles the interrupt
+   1. デバイスが該当する ``IRQ``*N* ピン上で割り込みを発生させる
+   1. PIC が IRQ をベクタ番号に変換し、その番号を CPU が読み取れるようにするために PIC のポートに書き込む
+   1. PIC が CPU の INTR ピン上で割り込みを発生させる
+   1. PIC は CPU が割り込みを認識するまで待つ
+   1. CPU が割り込みを処理する
 
-Will see later how the CPU handles the interrupt.
-Important to notice is that by design PIC won't raise another interrupt until the CPU acknowledged the current interrupt.
 
-Each IRQ line can be individually disabled.
-This allows simplifying design by making sure that interrupt handlers are always executed serially.
+CPU が割り込みを処理する方法はのちほど説明します。
+重要な点は、設計上 PIC は CPU が現在の割り込みを認識するまで別の割り込みを発生させることはないと言うことです。
 
-Advanced Programmable Interrupt Controller
-------------------------------------------
+複数ある IRQ 線は個別に無効にすることができます。
+これにより複数の割り込みハンドラが常に順番に実行されることを保証することができ、さらに設計が簡略化できます。
+
+
+##### x86 専用割り込みコントローラ（*Advanced Programmable Interrupt Controller*)
 
 ![](images/Fig15-Hardware_APIC.png)
 
-With multicore systems, each core has a local APIC used to process interrupts from locally connected devices like timers or thermals sensors.
+複数の CPU コアを持つシステムでは、コア毎に一個の「ローカル ``APIC`` （*Local APIC*）」を持ち、タイマー割り込みや温度センサのようなコア専用で接続しているデバイスからの割り込みを処理します。
 
-I/O APIC is used to distribute IRQ from external devices to CPU cores.
+「I/O APIC」は外部のデバイスから CPU コアに IRQ を分配する際に使用します。
 
-After discussing the hardware, now let's see how the processor handles an interrupt.
+これらのハードウェアについて説明した後に、どのようにプロセッサが一個の割り込みを処理するのかを見てみることにしましょう。
 
-Interrupt Control
------------------
+##### 割り込みの制御
 
 In order to synchronize access to shared data between the interrupt handler and other potential concurrent activities such as driver initialization or driver data processing, it is often required to enable and disable interrupts in
 a controlled fashion.
