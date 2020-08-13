@@ -104,28 +104,22 @@ CPU が割り込みを処理する方法はのちほど説明します。
 
 ##### 割り込みの制御
 
-In order to synchronize access to shared data between the interrupt handler and other potential concurrent activities such as driver initialization or driver data processing, it is often required to enable and disable interrupts in
-a controlled fashion.
+割り込みハンドラと、他の潜在的な並列処理（例えばドライバの初期化やドライバでのデータ処理）との間でデータを共有するためにアクセスを同期するには、制御された方法で割り込みを有効にしたり無効にする必要がでてきます。
 
-This can be accomplished at several levels:
+これは複数のレベルで実現することが可能です：
 
-.. slide:: Enabling/disabling the interrupts
-   :inline-contents: True
-   :level: 2
+   * デバイスのレベル
 
-   * at the device level
+     * デバイスのコントロール・レジスタをプログラミングすることで実現する
 
-     * by programming the device control registers
+   * PIC のレベル
 
-   * at the PIC level
+     * PIC は指定した IRQ 線を無効にするようプログラミングが可能である
 
-     * PIC can be programmed to disable a given IRQ line
+   * CPU のレベル（例えば、x86 系では次の命令を使用できる）：
 
-   * at the CPU level; for example, on x86 one can use the following
-     instructions:
-
-    * cli (CLear Interrupt flag)
-    * sti (SeT Interrupt flag)
+    * cli (*CLear Interrupt flag* / 割り込みフラグをクリアする)
+    * sti (*SeT Interrupt flag* / 割り込みフラグをセットする)
 
 
 Architecture specific interrupt handling in Linux
