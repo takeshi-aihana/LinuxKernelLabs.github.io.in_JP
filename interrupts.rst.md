@@ -116,10 +116,13 @@ CPU が割り込みを処理する方法はのちほど説明します。
 
      * PIC は指定した IRQ 線を無効にするようプログラミングが可能である
 
-   * CPU のレベル（例えば、x86 系では次の命令を使用できる）：
+   * CPU のレベル
 
-    * cli (*CLear Interrupt flag* / 割り込みフラグをクリアする)
-    * sti (*SeT Interrupt flag* / 割り込みフラグをセットする)
+     * 例えば x86 系では次の命令を使用できる：
+
+         * ``cli`` (_CLear Interrupt flag_ / 割り込みフラグをクリアする)
+
+         * ``sti`` (_SeT Interrupt flag_ / 割り込みフラグをセットする)
 
 
 Architecture specific interrupt handling in Linux
