@@ -67,7 +67,6 @@ CPU が命令を実行中に異常状態（*Abnormal Condition*) を検出する
 
 #### ハードウェアの概念
 
-
 ##### 割り込みコントローラ（*Programmable Interrupt Controller*)
 
 ![](images/Fig14-Hardware_PIC.png)
@@ -125,44 +124,60 @@ CPU が割り込みを処理する方法はのちほど説明します。
          * ``sti`` (_SeT Interrupt flag_ / 割り込みフラグをセットする)
 
 
-Architecture specific interrupt handling in Linux
-=================================================
+#### Linux におけるアーキテクチャ専用の割り込み処理
 
-In this section we will discuss how Linux handles interrupts for the x86 architecture.
+このセクションでは、Linux で x86 系アーキテクチャ向けの割り込みを処理する方法について説明します。
 
-Interrupt Descriptor Table
---------------------------
+##### 割り込みディスクリプタ・テーブル（*Interrupt Descriptor Table*）
 
-The interrupt descriptor table (IDT) associates each interrupt or exception identifier with a descriptor for the instructions that service the associated event.
-We will name the identifier as vector number and the associated instructions as interrupt/exception handler.
+「割り込みディスクリプタ・テーブル（``IDT``）」は割り込みや例外の識別子と対応するイベントを処理する命令のディスクリプタを関連付けたものです。
+ここでは割り込みや例外の識別子を「ベクタ番号」と呼び、イベントを処理する命令を「割り込み/例外ハンドラ」と呼ぶことにします。
 
-An IDT has the following characteristics:
+``IDT`` には次のような特徴があります：
 
-   * it is used as a jump table by the CPU when a given vector is triggered
-   * it is an array of 256 x 8 bytes entries
-   * may reside anywhere in physical memory
-   * processor locates IDT by the means of IDTR
+   * ``IDT`` は特定のベクタが発行されたら、CPU によって使用される「ジャンプ・テーブル」（ハンドラへのポインタまたは機械語のジャンプ命令を格納した配列）である
+   * ``IDT`` は 256 x 8 バイトのエントリを持つ配列である
+   * ``IDT`` は物理メモリのどこにでも常駐できる
+   * プロセッサは ``IDTR`` を使って ``IDT`` を特定する
 
-Below we can find Linux IRQ vector layout.
-The first 32 entries are reserved for exceptions, vector 128 is used for sycall interface and the rest are used mostly for hardware interrupts handlers.
+以下に Linux における ``IRQ`` ベクタのレイアウトを示します。
+最初の32個のエントリは例外用に予約され、「ベクタ#128」がシステムコールのインタフェースとして使用する以外、残りは主にハードウェアの割り込みハンドラとして使用されます。
 
 ![](images/Fig16-LinuxIRQVectorLayout.png)
 
-On x86 an IDT entry has 8 bytes and it is named gate. There can be 3 types of gates:
+x86 系アーキテクチャでは、一個の IDT エントリのサイズは 8 バイトで「ゲート（*Gate*）」と呼ばれています。
+ゲートには三つの種類があります：
 
-  * interrupt gate, holds the address of an interupt or exception handler.
-    Jumping to the handler disables maskable interrupts (IF flag is cleared).
-  * trap gates, similar with an interrupt gate but it does not disable maskable
-    interrupts while jumping to interupt/exception handler.
-  * task gates (not used in Linux)
+  * 割り込みゲート
 
-Lets have a look at several fields of an IDT entry:
+    このゲートは割り込みハンドラまたは例外ハンドラのアドレスを保持しており、これらのハンドラにジャンプすると（もし割り込みフラグがクリアされていれば）マスク可能な割り込みが無効になる
 
-   * segment selector, index into GDT/LDT to find the start of the code segment where
-     the interupt handlers resides
-   * offset, offset inside the code segment
-   * T, represents the type of gate
-   * DPL, minimum privilege required for using the segments content.
+  * トラップ・ゲート
+
+    このゲートは割り込みゲートに似ていますが、割り込みハンドラや例外ハンドラにジャンプしてもマスク可能な割り込みを無効にしない点が違う
+
+  * タスク・ゲート
+
+    Linux では使用しない
+
+それでは IDT エントリの各項目を見てみることにしましょう：
+
+   * セグメント・セレクタ
+
+     割り込みハンドラが格納されているコード・セグメント（の開始アドレス）を見つけるために使用する ``GDT/LDT`` のインデックス
+
+   * オフセット
+
+     コード・セグメント内でのオフセット値
+
+   * T
+
+     ゲートの種類を表す
+
+   * DPL
+
+     セグメントの内容を利用する際に必要となる最小限の権限
+
 
 ![](images/Fig17-InterruptDescripterTableEntry.png)
 
