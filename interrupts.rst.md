@@ -124,7 +124,7 @@ CPU が割り込みを処理する方法はのちほど説明します。
          * ``sti`` (_SeT Interrupt flag_ / 割り込みフラグをセットする)
 
 
-#### Linux におけるアーキテクチャ専用の割り込み処理
+#### アーキテクチャ専用の割り込み処理（Linuxの場合）
 
 このセクションでは、Linux で x86 系アーキテクチャ向けの割り込みを処理する方法について説明します。
 
@@ -135,17 +135,17 @@ CPU が割り込みを処理する方法はのちほど説明します。
 
 ``IDT`` には次のような特徴があります：
 
-   * ``IDT`` は特定のベクタが発行されたら、CPU によって使用される「ジャンプ・テーブル」（ハンドラへのポインタまたは機械語のジャンプ命令を格納した配列）である
-   * ``IDT`` は 256 x 8 バイトのエントリを持つ配列である
-   * ``IDT`` は物理メモリのどこにでも常駐できる
+   * ``IDT`` は、特定のベクタが発行されたら CPU によって使用される「ジャンプ・テーブル」（ハンドラへのポインタまたは機械語のジャンプ命令を格納した配列）である
+   * ``IDT`` は、 256 x 8 バイトのエントリを持つ配列である
+   * ``IDT`` は、物理メモリのどこにでも常駐できる
    * プロセッサは ``IDTR`` を使って ``IDT`` を特定する
 
 以下に Linux における ``IRQ`` ベクタのレイアウトを示します。
-最初の32個のエントリは例外用に予約され、「ベクタ#128」がシステムコールのインタフェースとして使用する以外、残りは主にハードウェアの割り込みハンドラとして使用されます。
+最初の32個のエントリは例外用に予約され、「ベクタ#128」がシステムコールのインタフェースとして使用される以外、残りは主にハードウェアの割り込みハンドラとして使用されます。
 
 ![](images/Fig16-LinuxIRQVectorLayout.png)
 
-x86 系アーキテクチャでは、一個の IDT エントリのサイズは 8 バイトで「ゲート（*Gate*）」と呼ばれています。
+x86 系アーキテクチャでは一個の IDT エントリのサイズは 8 バイトで、「ゲート（*Gate*）」と呼ばれています。
 ゲートには三つの種類があります：
 
   * 割り込みゲート
@@ -182,14 +182,12 @@ x86 系アーキテクチャでは、一個の IDT エントリのサイズは 8
 ![](images/Fig17-InterruptDescripterTableEntry.png)
 
 
-Interrupt handler address
--------------------------
+##### 割り込みハンドラのアドレス
 
-In order to find the interrupt handler address we first need to find the start address of the code segment where interrupt handler resides.
-For this we use the segment selector to index into GDT/LDT where we can find the corresponding segment descriptor.
-This will provide the start address kept in the 'base' field.
-Using base address and the offset we can now go at the start of the interrupt handler.
-
+割り込みハンドラの命令が格納されているアドレスを見つけるには、まずその命令が格納されているコード・セグメントの開始アドレスを見つける必要があります。
+そのためセグメント・セレクタを使って ``GDB/LDT`` にインデックスを付与します。これは対応するセグメント・ディスクリプタを見つけることができる情報です。
+これは「ベース」項目に保持されている開始アドレスが提供されます。
+そしてベース・アドレスとオフセットを使って、割り込みハンドラの先頭にジャンプすることができます。
 
 ![](images/Fig18-InterruptHandlerAddress.png)
 
