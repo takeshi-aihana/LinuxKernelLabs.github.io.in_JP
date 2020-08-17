@@ -65,9 +65,9 @@ CPU が命令を実行中に異常状態（*Abnormal Condition*) を検出する
 
 
 
-#### ハードウェアの概念
+### ハードウェアの概念
 
-##### 割り込みコントローラ（*Programmable Interrupt Controller*)
+#### 割り込みコントローラ（*Programmable Interrupt Controller*)
 
 ![](images/Fig14-Hardware_PIC.png)
 
@@ -91,7 +91,7 @@ CPU が割り込みを処理する方法はのちほど説明します。
 これにより複数の割り込みハンドラが常に順番に実行されることを保証することができ、さらに設計が簡略化できます。
 
 
-##### x86 専用割り込みコントローラ（*Advanced Programmable Interrupt Controller*)
+#### x86 専用割り込みコントローラ（*Advanced Programmable Interrupt Controller*)
 
 ![](images/Fig15-Hardware_APIC.png)
 
@@ -101,7 +101,7 @@ CPU が割り込みを処理する方法はのちほど説明します。
 
 これらのハードウェアについて説明した後に、どのようにプロセッサが一個の割り込みを処理するのかを見てみることにしましょう。
 
-##### 割り込みの制御
+#### 割り込みの制御
 
 割り込みハンドラと、他の潜在的な並列処理（例えばドライバの初期化やドライバでのデータ処理）との間でデータを共有するためにアクセスを同期するには、制御された方法で割り込みを有効にしたり無効にする必要がでてきます。
 
@@ -124,11 +124,11 @@ CPU が割り込みを処理する方法はのちほど説明します。
          * ``sti`` (_SeT Interrupt flag_ / 割り込みフラグをセットする)
 
 
-#### アーキテクチャ専用の割り込み処理（Linuxの場合）
+### アーキテクチャ専用の割り込み処理（Linuxの場合）
 
 このセクションでは、Linux で x86 系アーキテクチャ向けの割り込みを処理する方法について説明します。
 
-##### 割り込みディスクリプタ・テーブル（*Interrupt Descriptor Table*）
+#### 割り込みディスクリプタ・テーブル（*Interrupt Descriptor Table*）
 
 「割り込みディスクリプタ・テーブル（``IDT``）」は割り込みや例外の識別子と対応するイベントを処理する命令のディスクリプタを関連付けたものです。
 ここでは割り込みや例外の識別子を「ベクタ番号」と呼び、イベントを処理する命令を「割り込み/例外ハンドラ」と呼ぶことにします。
@@ -164,7 +164,7 @@ x86 系アーキテクチャでは一個の IDT エントリのサイズは 8 �
 
    * セグメント・セレクタ
 
-     割り込みハンドラが格納されているコード・セグメント（の開始アドレス）を見つけるために使用する ``GDT/LDT`` のインデックス
+     割り込みハンドラが格納されているコード・セグメント（の開始アドレス）を見つけるために使用する ``GDT/LDT`` 内のインデックス
 
    * オフセット
 
@@ -182,71 +182,57 @@ x86 系アーキテクチャでは一個の IDT エントリのサイズは 8 �
 ![](images/Fig17-InterruptDescripterTableEntry.png)
 
 
-##### 割り込みハンドラのアドレス
+#### 割り込みハンドラのアドレス
 
-割り込みハンドラの命令が格納されているアドレスを見つけるには、まずその命令が格納されているコード・セグメントの開始アドレスを見つける必要があります。
-そのためセグメント・セレクタを使って ``GDB/LDT`` にインデックスを付与します。これは対応するセグメント・ディスクリプタを見つけることができる情報です。
+割り込みハンドラの命令が格納されているアドレス（``ISR`` アドレス / *Interrupt Service Routine Address* ）を見つけるには、まずその命令が格納されているコード・セグメントの開始アドレスを見つける必要があります。
+そのためセグメント・セレクタを使って ``GDB/LDT`` 内で該当する情報を検索します。これは対応するセグメント・ディスクリプタを見つけることができる情報です。
 これは「ベース」項目に保持されている開始アドレスが提供されます。
 そしてベース・アドレスとオフセットを使って、割り込みハンドラの先頭にジャンプすることができます。
 
 ![](images/Fig18-InterruptHandlerAddress.png)
 
 
-Stack of interrupt handler
---------------------------
+#### 割り込みハンドラのスタック
 
-Similar with control transfer to a normal function, a control transfer to an interrupt or exception handler uses the stack to store the information needed for returning to the interrupted code.
+通常の関数を呼び出す場合と同様に、割り込みハンドラや例外ハンドラの呼び出しも割り込みを発生させた箇所（コード）へ戻るために必要な情報を保存しておくのにスタックを使用します。
 
-As can be seen in the figure below, an interrupt pushes the EFLAGS register before saving the address of the interrupted instruction.
-Certain types of exceptions also cause an error code to be pushed on the stack to help debug the exception.
+次の図でもわかるように、割り込みが発生した命令（コード）のアドレスを保存する前に ``EFLAGS`` レジスタをプッシュしておきます。
+特定の種類の例外もまたデバッグしやすくするために、その例外が発生した時の問題あるコードをスタックにプシュしておきます。
 
 
 ![](images/Fig19-InterruptHandlerStack.png)
 
 
-Handling an interrupt request
------------------------------
+#### 割り込み要求の処理
 
-After an interrupt request has been generated the processor runs a sequence of events that eventually ends up with running the kernel interrupt handler:
+一個の割り込みが生成されると、プロセッサは次に示すイベント・シーケンスを実行します。このシーケンスは最終的にカーネルの割り込みハンドラを呼び出します：
 
+   1. CPU は現在の特権レベルをチェックする
+   1. <特権レベルを変更する必要がある場合>
+      * 現在使用中のスタックを、新しい特権に関連づけられたスタックに変更する
+      * 古いスタックの情報を新しいスタックに保存する
 
-.. slide:: Handling an interrupt request
-   :inline-contents: True
-   :level: 2
-
-
-   * CPU checks the current privilege level
-   * if need to change privilege level
-
-      * change stack with the one associated with new privilege
-      * save old stack information on the new stack
-
-   * save EFLAGS, CS, EIP on stack
-   * save error code on stack in case of an abort
-   * execute the kernel interrupt handler
-
-Returning from an interrupt handler
------------------------------------
-
-Most architectures offers special instructions to clean-up the stack and resume the execution after the interrupt handler has been executed.
-On x86 IRET is used to return from an interrupt handler.
-IRET is similar with RET except that IRET increments ESP by extra four bytes (because of the flags on stack) and moves the saved flags into EFLAGS register.
-
-To resume the execution after an interrupt the following sequence is used (x86):
-
-.. slide:: Returning from an interrupt
-   :inline-contents: True
-   :level: 2
-
-   * pop the eror code (in case of an abort)
-   * call IRET
-
-     * pops values from the stack and restore the following register: CS, EIP, EFLAGS
-     * if privilege level changed returns to the old stack and old privilege level
+   1. スタックに ``EFLAGS``、``CS``、``EIP`` の情報を保存する
+   1. <**abort** の場合> はエラー・コードをスタックに保存する
+   1. カーネルの割り込みハンドラを呼び出す
 
 
-Generic interrupt handling in Linux
-===================================
+#### 割り込みハンドラから戻る処理
+
+ほとんどのアーキテクチャは、割り込みハンドラを実行したあとにスタックをクリアして（一時停止していた）実行を再開する特別な命令を提供しています。
+x86 系では、割り込みハンドラから戻る際に ``IRET`` 命令を使用します。
+``IRET`` は ``RET`` 命令と似ていますが、前者はスタックに保存しているフラグのために ``ESP`` を4バイト余分にカウントし、そのフラグを ``EFLAGS`` レジスタに移動する点が違います。
+
+x86 系では、割り込みの処理のあとに実行を再開する際は次のシーケンスを実行します：
+
+   1. <**abort** の場合> エラー・コードをポップする
+   2. ``IRET`` 命令を呼び出す
+
+     * スタックからいろいろな値をポップして、``CS``、``EIP``、``EFLAGS`` といったレジスタにリストアする
+     * もし <特権レベルを変更していたら> 古いスタックと古い特権レベルに戻す
+
+
+### Generic interrupt handling in Linux
 
 In Linux the interrupt handling is done in three phases: critical, immediate and deferred.
 
