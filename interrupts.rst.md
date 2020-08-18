@@ -233,26 +233,22 @@ x86 系では、割り込みの処理のあとに実行を再開する際は次�
 
 ### Linux の汎用的な割り込み処理
 
-In Linux the interrupt handling is done in three phases: critical, immediate and deferred.
+Linux の割り込み処理には３つのフェーズがあります： ``critical`` と ``immediate`` と ``deferred``
 
-In the first phase the kernel will run the generic interrupt handler that determines the interrupt number, the interrupt handler for this particular interrupt and the interrupt controller.
-At this point any timing critical actions will also be performed (e.g. acknowledge the interrupt at the interrupt controller level).
-Local processor interrupts are disabled for the duration of this phase and continue to be disabled in the next phase.
+カーネルは、一番最初のフェーズで割り込み番号を決定する汎用割り込みハンドラ、特殊な割り込みを処理する割り込みハンドラ、そして割り込みコントローラを実行します。
+この時、どんなタイミングであっても ``critical`` な処理が実行されます（例えば割り込みコントローラのレベルで割り込みの認識など）。
+このフェーズではプロセッサ別の割り込みは無効になり、次のフェーズでも引き続き無効になります。
 
-In the second phase all of the device drivers handler associated with this interrupt will be executed [#f1]_.
-At the end of this phase the interrupt controller's "end of interrupt" method is called to allow the interrupt controller to reassert this interrupt.
-The local processor interrupts are enabled at this point.
+二番目のフェーズでは、この割り込みに関連づけられた全てのデバイス・ドライバのハンドラが実行されます[注1]。
+このフェーズの最後で割り込みコントローラの「割り込みの最後（*end of interrupt*）」というメソッドが呼び出され、割り込みコントローラでこの割り込みを再びアサートできるようになります。
+この時点でプロセッサ別の割り込みが有効になります。
 
-.. [#f1] Note that it is possible that one interrupt is associated with multiple
-	 devices and in this case it is said that the interrupt is
-	 shared. Usually, when using shared interrupts it is the responsibility
-	 of the device driver to determine if the interrupt is target to it's
-	 device or not.
+  * [注1] 一個の割り込みを複数のデバイスに関連付けることは可能であり、そのような場合「割り込みが共有されている」と呼びます。
+	この共有された割り込みを使用する場合、通常はその割り込みがデバイスの対象であるかどうかを判断するのはデバイス・ドライバ側の責任になるので注意して下さい。
 
-Finally, in the last phase of interrupt handling interrupt context deferrable actions will be run.
-These are also sometimes known as "bottom half" of the interrupt (the upper half being the part of the interrupt handling that runs with interrupts disabled).
-At this point interrupts are enabled on the local processor.
-
+そして割り込み処理の最後のフェーズでは、割り込みコンテキストで延期することが可能な処理がいくつか実行されます。
+これらは、しばしば割り込みの「ボトム・ハーフ（*bottom half*）」と呼ばれています（これに対して「アッパー・ハーフ（*upper half*）」とは、割り込みを無効にして実行される割り込み処理の一部です）。
+この時点でプロセッサ別の割り込み有効になります。
 
 ![](images/Fig20-InterruptHandlingInLinux.png)
 
@@ -265,15 +261,9 @@ Some architectures define interrupt levels that allow preemption of an interrupt
 
 In order to support as many architectures as possible, Linux has a more restrictive interrupt nesting implementation:
 
-.. slide:: IRQ nesting in Linux
-   :inline-contents: True
-   :level: 2
+   * an exception (e.g. page fault, system call) can not preempt an interrupt; if that occurs it is considered a bug
 
-   * an exception (e.g. page fault, system call) can not preempt an interrupt;
-     if that occurs it is considered a bug
-
-   * an interrupt can preempt an exception or other interrupts; however, only
-     one level of interrupt nesting is allowed
+   * an interrupt can preempt an exception or other interrupts; however, only one level of interrupt nesting is allowed
 
 The diagram below shows the possible nesting scenarios:
 
@@ -283,15 +273,9 @@ The diagram below shows the possible nesting scenarios:
 Interrupt context
 -----------------
 
-While an interrupt is handled (from the time the CPU jumps to the interrupt
-handler until the interrupt handler returns - e.g.  IRET is issued) it is said
-that code runs in "interrupt context".
+While an interrupt is handled (from the time the CPU jumps to the interrupt handler until the interrupt handler returns - e.g.  IRET is issued) it is said that code runs in "interrupt context".
 
 Code that runs in interrupt context has the following properties:
-
-.. slide:: Interrupt context
-   :inline-contents: True
-   :level: 2
 
     * it runs as a result of an IRQ (not of an exception)
     * there is no well defined process context associated
@@ -300,26 +284,16 @@ Code that runs in interrupt context has the following properties:
 Deferrable actions
 ------------------
 
-Deferrable actions are used to run callback functions at a later time. If
-deferrable actions scheduled from an interrupt handler, the associated callback
-function will run after the interrupt handler has completed.
+Deferrable actions are used to run callback functions at a later time.
+If deferrable actions scheduled from an interrupt handler, the associated callback function will run after the interrupt handler has completed.
 
-There are two large categories of deferrable actions: those that run in
-interrupt context and those that run in process context.
+There are two large categories of deferrable actions:
+those that run in interrupt context and those that run in process context.
 
-The purpose of interrupt context deferrable actions is to avoid doing too much
-work in the interrupt handler function. Running for too long with interrupts
-disabled can have undesired effects such as increased latency or poor system
-performance due to missing other interrupts (e.g. dropping network packets
-because the CPU did not react in time to dequeue packets from the network
-interface and the network card buffer is full).
+The purpose of interrupt context deferrable actions is to avoid doing too much work in the interrupt handler function.
+Running for too long with interrupts disabled can have undesired effects such as increased latency or poor system performance due to missing other interrupts (e.g. dropping network packets because the CPU did not react in time to dequeue packets from the network interface and the network card buffer is full).
 
 In Linux there are three types of deferrable actions:
-
-.. slide:: Deferrable actions in Linux
-   :inline-contents: True
-   :level: 2
-
 
     * softIRQ
 
@@ -337,20 +311,14 @@ In Linux there are three types of deferrable actions:
 
       * run in process context
 
-Deferrable actions have APIs to: **initialize** an instance, **activate** or
-**schedule** the action and **mask/disable** and **unmask/enable** the execution
-of the callback function. The later is used for synchronization purposes between
-the callback function and other contexts.
+Deferrable actions have APIs to:
+**initialize** an instance, **activate** or **schedule** the action and **mask/disable** and **unmask/enable** the execution of the callback function.
+The later is used for synchronization purposes between the callback function and other contexts.
 
 Soft IRQs
 ---------
 
-Soft IRQs is the term used for the low level mechanism that implements deferring
-work from interrupt handlers but that still runs in interrupt context.
-
-.. slide:: Soft IRQs
-   :inline-contents: True
-   :level: 2
+Soft IRQs is the term used for the low level mechanism that implements deferring work from interrupt handlers but that still runs in interrupt context.
 
     Soft IRQ APIs:
 
@@ -363,32 +331,18 @@ work from interrupt handlers but that still runs in interrupt context.
       * after an interrupt handler or
       * from the ksoftirqd kernel thread
 
-
-.. slide:: ksoftirqd
-   :inline-contents: False
-   :level: 2
-
     * minimum priority kernel thread
     * runs softirqs after certain limits are reached
     * tries to achieve good latency and avoid process starvation
 
 
-Since softirqs can reschedule themselves or other interrupts can occur that
-reschedules them, they can potentially lead to (temporary) process starvation if
-checks are not put into place. Currently, the Linux kernel does not allow
-running soft irqs for more than :c:macro:`MAX_SOFTIRQ_TIME` or rescheduling for
-more than :c:macro:`MAX_SOFTIRQ_RESTART` consecutive times.
+Since softirqs can reschedule themselves or other interrupts can occur that reschedules them, they can potentially lead to (temporary) process starvation if checks are not put into place.
+Currently, the Linux kernel does not allow running soft irqs for more than :c:macro:`MAX_SOFTIRQ_TIME` or rescheduling for more than :c:macro:`MAX_SOFTIRQ_RESTART` consecutive times.
 
-Once these limits are reached a special kernel thread, **ksoftirqd** is wake-up
-and all of the rest of pending soft irqs will be run from the context of this
-kernel thread.
+Once these limits are reached a special kernel thread, **ksoftirqd** is wake-up and all of the rest of pending soft irqs will be run from the context of this kernel thread.
 
-Soft irqs usage is restricted, they are use by a handful of subsystems that have
-low latency requirements. For 4.19 this is the full list of soft irqs:
-
-.. slide:: Types of soft IRQ
-   :inline-contents: True
-   :level: 2
+Soft irqs usage is restricted, they are use by a handful of subsystems that have low latency requirements.
+For 4.19 this is the full list of soft irqs:
 
     * HI_SOFTIRQ
     * TIMER_SOFTIRQ
@@ -404,12 +358,7 @@ low latency requirements. For 4.19 this is the full list of soft irqs:
 Tasklets
 --------
 
-.. slide:: Tasklets
-   :inline-contents: True
-   :level: 2
-
-   Tasklets are a dynamic type (not limited to a fixed number) of
-   deferred work running in interrupt context.
+   Tasklets are a dynamic type (not limited to a fixed number) of deferred work running in interrupt context.
 
    Tasklets API:
 
@@ -426,10 +375,6 @@ Tasklets
 Workqueues
 ----------
 
- .. slide:: Workqueues
-   :inline-contents: True
-   :level: 2
-
    Workqueues are a type of deferred work that runs in process context.
 
    They are implemented on top of kernel threads.
@@ -441,10 +386,6 @@ Workqueues
 
 Timers
 ------
-
-.. slide:: Timers
-   :inline-contents: True
-   :level: 2
 
     Timers are implemented on top of the :c:macro:`TIMER_SOFTIRQ`
 
