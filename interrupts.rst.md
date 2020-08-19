@@ -236,53 +236,53 @@ x86 系では、割り込みの処理のあとに実行を再開する際は次�
 Linux の割り込み処理には３つのフェーズがあります： ``critical`` と ``immediate`` と ``deferred``
 
 カーネルは、一番最初のフェーズで割り込み番号を決定する汎用割り込みハンドラ、特殊な割り込みを処理する割り込みハンドラ、そして割り込みコントローラを実行します。
-この時、どんなタイミングであっても ``critical`` な処理が実行されます（例えば割り込みコントローラのレベルで割り込みの認識など）。
+この時、どんなタイミングであっても ``critical`` な処理が実行されます（例えば ``ACK IRQ`` 〜 割り込みコントローラのレベルで割り込みの認識など）。
 このフェーズではプロセッサ別の割り込みは無効になり、次のフェーズでも引き続き無効になります。
 
 二番目のフェーズでは、この割り込みに関連づけられた全てのデバイス・ドライバのハンドラが実行されます[注1]。
 このフェーズの最後で割り込みコントローラの「割り込みの最後（*end of interrupt*）」というメソッドが呼び出され、割り込みコントローラでこの割り込みを再びアサートできるようになります。
 この時点でプロセッサ別の割り込みが有効になります。
 
-  * [注1] 一個の割り込みを複数のデバイスに関連付けることは可能であり、そのような場合「割り込みが共有されている」と呼びます。
+  * [注1] 一個の割り込みを複数のデバイスに関連付けることは可能であり、そのような場合「割り込みが共有されている」と言います。
 	この共有された割り込みを使用する場合、通常はその割り込みがデバイスの対象であるかどうかを判断するのはデバイス・ドライバ側の責任になるので注意して下さい。
 
 そして割り込み処理の最後のフェーズでは、割り込みコンテキストで延期することが可能な処理がいくつか実行されます。
-これらは、しばしば割り込みの「ボトム・ハーフ（*bottom half*）」と呼ばれています（これに対して「アッパー・ハーフ（*upper half*）」とは割り込みを無効にして実行される割り込み処理の一部です）。
+これらは、しばしば割り込みの「ボトム・ハーフ（*bottom half*）」と呼ばれています（これに対し「アッパー・ハーフ（*upper half*）」とは割り込みを無効にして実行される割り込み処理の一部です）。
 この時点でプロセッサ別の割り込みが有効になります。
 
 ![](images/Fig20-InterruptHandlingInLinux.png)
 
 
-Nested interrupts and exceptions
---------------------------------
+#### ネストした割り込みと例外
 
-Nesting interrupts is permitted on many architectures.
-Some architectures define interrupt levels that allow preemption of an interrupt only if the pending interrupt has a greater priority then the current (settable) level (e.g see ARM's priority mask).
+多くのアーキテクチャでは「割り込みのネスト[訳注1]」が許されています。
 
-In order to support as many architectures as possible, Linux has a more restrictive interrupt nesting implementation:
+  * [訳注1] 任意の割り込みハンドラの中で別の割り込みを受け付ける処理のこと。これを実現するには CPU が割り込みを受けた時に、まず割り込みコントローラに割り込みを受け付けたことを知らせ、これによって割り込みコントローラはまた別の割り込みを発生させることができるようになる（但し、同じ種類の割り込みは不可）。
 
-   * an exception (e.g. page fault, system call) can not preempt an interrupt; if that occurs it is considered a bug
+一部のアーキテクチャは、保留中の割り込みが現在の（指定可能な）レベルよりも優先度が高い場合にのみ割り込みのプリエンプト（実行の中断）が可能になる割り込みレベルを定義しています（例えば ARM の優先度マスクを参照のこと）。
 
-   * an interrupt can preempt an exception or other interrupts; however, only one level of interrupt nesting is allowed
+可能な限りたくさんのアーキテクチャをサポートするため、Linux ではネストする割り込みに対しては、他よりも厳格な実装になっています：
 
-The diagram below shows the possible nesting scenarios:
+   * 任意の例外（例えばページ・フォルトやシステム・コール）は割り込みをプリエンプトすることはできない（実行を中断して割り込むことはできない）。もしそのような状況が発生したらバグであるとみなす。
+   
+   * 任意の割り込みは任意の例外または他の割り込みをプリエンプトできる（実行を中断して割り込める）。但し、プリエンプトが許される割り込みはネストがレベル１のものだけ。
+
+次の図はネストが可能な割り込みのシナリオを示しています：
 
 ![](images/Fig21-IRQ_NestingInLinux.png)
 
 
-Interrupt context
------------------
+#### 割り込みコンテキスト
 
-While an interrupt is handled (from the time the CPU jumps to the interrupt handler until the interrupt handler returns - e.g.  IRET is issued) it is said that code runs in "interrupt context".
+任意の割り込みが処理されている間（CPU の制御が割り込みハンドラにジャンプしてから、割り込みハンドラから戻ってくる 〜 例えば ``IRET`` 命令が発行される 〜 までの間）、コードは「割り込みコンテキスト（*Interrupt Contest*）」の中で実行されると言います。
+割り込みコンテキストの中で実行されるコードには次のような特徴があります：
 
-Code that runs in interrupt context has the following properties:
+    * 例外ではなく、IRQ の結果としてコードが実行される
+    * 明確に定義されたプロセス・コンテキストは関連付けられていない
+    * コンテキストの切り替え（コンテキスト・スイッチ）を発動することはできない (従って、スリープできない、スケジューラーも使用できない、ユーザ空間のメモリにもアクセスできない）
 
-    * it runs as a result of an IRQ (not of an exception)
-    * there is no well defined process context associated
-    * not allowed to trigger a context switch (no sleep, schedule, or user memory access)
 
-Deferrable actions
-------------------
+#### Deferrable actions
 
 Deferrable actions are used to run callback functions at a later time.
 If deferrable actions scheduled from an interrupt handler, the associated callback function will run after the interrupt handler has completed.
@@ -315,8 +315,7 @@ Deferrable actions have APIs to:
 **initialize** an instance, **activate** or **schedule** the action and **mask/disable** and **unmask/enable** the execution of the callback function.
 The later is used for synchronization purposes between the callback function and other contexts.
 
-Soft IRQs
----------
+#### Soft IRQs
 
 Soft IRQs is the term used for the low level mechanism that implements deferring work from interrupt handlers but that still runs in interrupt context.
 
@@ -355,8 +354,7 @@ For 4.19 this is the full list of soft irqs:
     * HRTIMER_SOFTIRQ,
     * RCU_SOFTIRQ
 
-Tasklets
---------
+#### Tasklets
 
    Tasklets are a dynamic type (not limited to a fixed number) of deferred work running in interrupt context.
 
@@ -372,8 +370,7 @@ Tasklets
    Tasklets are also serialized, i.e. the same tasklet can only execute on one processor.
 
 
-Workqueues
-----------
+#### Workqueues
 
    Workqueues are a type of deferred work that runs in process context.
 
@@ -384,8 +381,7 @@ Workqueues
     * init: :c:macro:`INIT_WORK`
     * activation: :c:func:`schedule_work`
 
-Timers
-------
+#### Timers
 
     Timers are implemented on top of the :c:macro:`TIMER_SOFTIRQ`
 
