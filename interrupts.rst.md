@@ -282,48 +282,48 @@ Linux の割り込み処理には３つのフェーズがあります： ``criti
     * コンテキストの切り替え（コンテキスト・スイッチ）を発動することはできない (従って、スリープできない、スケジューラーも使用できない、ユーザ空間のメモリにもアクセスできない）
 
 
-#### Deferrable actions
+#### 処理を先延ばしできるタスク
 
-Deferrable actions are used to run callback functions at a later time.
-If deferrable actions scheduled from an interrupt handler, the associated callback function will run after the interrupt handler has completed.
+「延期が可能なタスク（*Deferrable Action*）」とは、後になってからコールバック関数を呼び出すことを意味します。
+もし任意の割り込みハンドラから延期が可能なタスクがスケジューリングされたら、割り込みハンドラの処理が完了した後にそれに関連するコールバック関数が呼び出されます。
 
-There are two large categories of deferrable actions:
-those that run in interrupt context and those that run in process context.
+この延期可能なタスクは大きく分けて二つに分類できます。
+それは「割り込みコンテキスト」の中で実行されるタスクと「プロセス・コンテキスト」の中で実行されるタスクです。
 
-The purpose of interrupt context deferrable actions is to avoid doing too much work in the interrupt handler function.
-Running for too long with interrupts disabled can have undesired effects such as increased latency or poor system performance due to missing other interrupts (e.g. dropping network packets because the CPU did not react in time to dequeue packets from the network interface and the network card buffer is full).
+割り込みコンテキストの中で実行されるタスクの目的は、（処理時間がシビアな）割り込みハンドラの中でたくさんの処理を行わないようにすることです。
+例えば割り込みを無効にしたまま長時間処理をするとレイテンシが増加したり、他の割り込みが発行されないためにシステム全体のパフォーマンスが低下する（具体例としては、割り込みが飛ばないため に CPU がネットワーク・インタフェースのキューからパケットを Pop しなくなるとネットワークのパケットをロストし、さらにネットワーク・インタフェースのバッファが満杯になってしまいます）といった望ましくない影響が生じる可能性があります。
 
-In Linux there are three types of deferrable actions:
+Linux では延期が可能なタスクの種類が３つあります：
 
-    * softIRQ
+   * softIRQ
 
-      * runs in interrupt context
-      * statically allocated
-      * same handler may run in parallel on multiple cores
+     * 割り込みコンテキストの中で実行する
+     * 静的に確保される
+     * 同じハンドラが複数のコアの上で並列して実行される場合がある
 
-    * tasklet
+   * タスクレット（*tasklet*）
 
-      * runs in interrupt context
-      * can be dynamically allocated
-      * same handler runs are serialized
+     * 割り込みコンテキストの中で実行する
+     * 動的に確保される場合がある
+     * 同じハンドラが複数個に分けられて実行される（*serialized*）
 
-    * workqueues
+   * ワークキュー （*workqueues*）
 
-      * run in process context
+     * プロセス・コンテキストの中で実行する
 
-Deferrable actions have APIs to:
-**initialize** an instance, **activate** or **schedule** the action and **mask/disable** and **unmask/enable** the execution of the callback function.
-The later is used for synchronization purposes between the callback function and other contexts.
+延期が可能なタスクには次の API があります：
+インスタンスの**初期化**、タスクの**活性化**または**スケジューリング**、そしてコールバック関数の実行の **mask/無効** と **unmask/有効** です。
+後者はコールバック関数と他のコンテキストの間で同期するために使用します。
 
 #### Soft IRQs
 
 Soft IRQs is the term used for the low level mechanism that implements deferring work from interrupt handlers but that still runs in interrupt context.
 
-    Soft IRQ APIs:
+   Soft IRQ APIs:
 
-      * initialize: :c:func:`open_softirq`
-      * activation: :c:func:`raise_softirq`
-      * masking: :c:func:`local_bh_disable`, :c:func:`local_bh_enable`
+     * initialize: :c:func:`open_softirq`
+     * activation: :c:func:`raise_softirq`
+     * masking: :c:func:`local_bh_disable`, :c:func:`local_bh_enable`
 
     Once activated, the callback function :c:func:`do_softirq` runs either:
 
@@ -333,7 +333,6 @@ Soft IRQs is the term used for the low level mechanism that implements deferring
     * minimum priority kernel thread
     * runs softirqs after certain limits are reached
     * tries to achieve good latency and avoid process starvation
-
 
 Since softirqs can reschedule themselves or other interrupts can occur that reschedules them, they can potentially lead to (temporary) process starvation if checks are not put into place.
 Currently, the Linux kernel does not allow running soft irqs for more than :c:macro:`MAX_SOFTIRQ_TIME` or rescheduling for more than :c:macro:`MAX_SOFTIRQ_RESTART` consecutive times.
