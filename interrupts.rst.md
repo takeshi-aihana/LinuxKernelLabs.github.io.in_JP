@@ -293,7 +293,7 @@ Linux の割り込み処理には３つのフェーズがあります： ``criti
 割り込みコンテキストの中で実行されるタスクの目的は、（処理時間がシビアな）割り込みハンドラの中でたくさんの処理を行わないようにすることです。
 例えば割り込みを無効にしたまま長時間処理をするとレイテンシが増加したり、他の割り込みが発行されないためにシステム全体のパフォーマンスが低下する（具体例としては、割り込みが飛ばないため に CPU がネットワーク・インタフェースのキューからパケットを Pop しなくなるとネットワークのパケットをロストし、さらにネットワーク・インタフェースのバッファが満杯になってしまいます）といった望ましくない影響が生じる可能性があります。
 
-Linux では延期が可能なタスクの種類が３つあります：
+Linux では延期が可能なタスクが３種類あります：
 
    * softIRQ
 
@@ -315,32 +315,29 @@ Linux では延期が可能なタスクの種類が３つあります：
 インスタンスの**初期化**、タスクの**活性化**または**スケジューリング**、そしてコールバック関数の実行の **mask/無効** と **unmask/有効** です。
 後者はコールバック関数と他のコンテキストの間で同期するために使用します。
 
+
 #### Soft IRQs
 
-Soft IRQs is the term used for the low level mechanism that implements deferring work from interrupt handlers but that still runs in interrupt context.
+Soft IRQs は割り込みハンドラからの処理を時間をおいてからあとで実行する低レベルな仕組みを指す用語ですが、依然として割り込みコンテキストの中で事項されます。
 
- Soft IRQ APIs:
+ Soft IRQ の API:
 
-   * initialize: :c:func:`open_softirq`
-   * activation: :c:func:`raise_softirq`
-   * masking: :c:func:`local_bh_disable`, :c:func:`local_bh_enable`
+   * 初期化: ``open_softirq()``
+   * 活性化: ``raise_softirq()``
+   * mask: ``local_bh_disable()`` と  ``local_bh_enable()``
 
- Once activated, the callback function :c:func:`do_softirq` runs either:
+ 一度、活性化されるとコールバック関数の ``do_softirq()`` が次のいずれかのタイミングで実行されます：
 
-   * after an interrupt handler or
-   * from the ksoftirqd kernel thread
+   * 任意の割り込みハンドラの後
+   * カーネル・スレッドの ``ksoftirqd`` から任意のタイミング
 
-   * minimum priority kernel thread
-   * runs softirqs after certain limits are reached
-   * tries to achieve good latency and avoid process starvation
+Soft IRQs が自分自身を再スケジューリングする可能性、もしくはそれらを再スケジューリングする他の割り込みが発生する可能性があるため、もしチェックが設定されていない場合は潜在的に Soft IRQs が（一時的な）プロセス枯渇につながる可能性があります。
+さらに現在、Linux カーネルでは ``MAX_SOFTIRQ`` の値を越えて Soft IRQs を実行したり、``MAX_SOFTIRQ_RESTART`` の値を越えて連続して再スケジューリングすることはできません。
 
-Since softirqs can reschedule themselves or other interrupts can occur that reschedules them, they can potentially lead to (temporary) process starvation if checks are not put into place.
-Currently, the Linux kernel does not allow running soft irqs for more than :c:macro:`MAX_SOFTIRQ_TIME` or rescheduling for more than :c:macro:`MAX_SOFTIRQ_RESTART` consecutive times.
+これらの制限に到達してしまうと、特別なカーネル・スレッドである **ksoftirqd** が起床し、保留中の全ての Soft IRQs がこのカーネル・スレッドのコンテキストから実行されます。
 
-Once these limits are reached a special kernel thread, **ksoftirqd** is wake-up and all of the rest of pending soft irqs will be run from the context of this kernel thread.
-
-Soft irqs usage is restricted, they are use by a handful of subsystems that have low latency requirements.
-For 4.19 this is the full list of soft irqs:
+Soft IRQs の使用に関しては制限があり、低いレイテンシが必須ないくつかのサブシステムによって使用されます。
+カーネル 4.19 の場合の、Soft IRQs は次のとおりです：
 
     * HI_SOFTIRQ
     * TIMER_SOFTIRQ
