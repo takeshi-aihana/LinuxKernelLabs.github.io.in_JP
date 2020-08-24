@@ -282,20 +282,20 @@ Linux の割り込み処理には３つのフェーズがあります： ``criti
    * コンテキストの切り替え（コンテキスト・スイッチ）を発動することはできない (従って、スリープできない、スケジューラーも使用できない、ユーザ空間のメモリにもアクセスできない）
 
 
-#### 処理を先延ばしできるタスク
+#### 処理の延期が可能なタスク
 
-「延期が可能なタスク（*Deferrable Action*）」とは、後になってからコールバック関数を呼び出すことを意味します。
-もし任意の割り込みハンドラから延期が可能なタスクがスケジューリングされたら、割り込みハンドラの処理が完了した後にそれに関連するコールバック関数が呼び出されます。
+「処理を先延ばしできるタスク（*Deferrable Action*）」とは、後になってからコールバック関数を呼び出すことを意味します。
+処理を先延ばしできるタスクが、任意の割り込みハンドラからスケジューリングされた場合は、割り込みハンドラの処理が完了した「後」にそれに関連するコールバック関数が呼び出されます。
 
-この延期可能なタスクは大きく分けて二つに分類できます。
+処理を先延ばしできるタスクは大きく分けて二つに分類できます。
 それは「割り込みコンテキスト」の中で実行されるタスクと「プロセス・コンテキスト」の中で実行されるタスクです。
 
 割り込みコンテキストの中で実行されるタスクの目的は、（処理時間がシビアな）割り込みハンドラの中でたくさんの処理を行わないようにすることです。
 例えば割り込みを無効にしたまま長時間処理をするとレイテンシが増加したり、他の割り込みが発行されないためにシステム全体のパフォーマンスが低下する（具体例としては、割り込みが飛ばないため に CPU がネットワーク・インタフェースのキューからパケットを Pop しなくなるとネットワークのパケットをロストし、さらにネットワーク・インタフェースのバッファが満杯になってしまいます）といった望ましくない影響が生じる可能性があります。
 
-Linux では延期が可能なタスクが３種類あります：
+Linux では処理を先延ばしできるタスクが３種類あります：
 
-   * softIRQ
+   * ソフト割り込み（*soft IRQ*）
 
      * 割り込みコンテキストの中で実行する
      * 静的に確保される
@@ -311,16 +311,16 @@ Linux では延期が可能なタスクが３種類あります：
 
      * プロセス・コンテキストの中で実行する
 
-延期が可能なタスクには次の API があります：
+処理を先延ばしできるタスクには次の API があります：
 インスタンスの**初期化**、タスクの**活性化**または**スケジューリング**、そしてコールバック関数の実行の **mask/無効** と **unmask/有効** です。
 後者はコールバック関数と他のコンテキストの間で同期するために使用します。
 
 
-#### Soft IRQs
+#### ソフト割り込み（Soft IRQs）
 
-Soft IRQs は割り込みハンドラからの処理を時間をおいてからあとで実行する低レベルな仕組みを指す用語ですが、依然として割り込みコンテキストの中で事項されます。
+「ソフト割り込み」は割り込みハンドラからの処理を時間をおいてからあとで実行する低レベルな仕組みを指す用語ですが、依然として割り込みコンテキストの中で事項されます。
 
- Soft IRQ の API:
+ ソフト割り込みの API:
 
    * 初期化: ``open_softirq()``
    * 活性化: ``raise_softirq()``
@@ -331,13 +331,13 @@ Soft IRQs は割り込みハンドラからの処理を時間をおいてから�
    * 任意の割り込みハンドラの後
    * カーネル・スレッドの ``ksoftirqd`` から任意のタイミング
 
-Soft IRQs が自分自身を再スケジューリングする可能性、もしくはそれらを再スケジューリングする他の割り込みが発生する可能性があるため、もしチェックが設定されていない場合は潜在的に Soft IRQs が（一時的な）プロセス枯渇につながる可能性があります。
-さらに現在、Linux カーネルでは ``MAX_SOFTIRQ`` の値を越えて Soft IRQs を実行したり、``MAX_SOFTIRQ_RESTART`` の値を越えて連続して再スケジューリングすることはできません。
+いろいろなソフト割り込みが自分自身を再スケジューリングする可能性、もしくはそれらを再スケジューリングする他の割り込みが発生する可能性があるため、もしチェックが設定されていない場合は潜在的にソフト割り込みが（一時的な）プロセス枯渇につながる可能性があります。
+さらに現在、Linux カーネルでは ``MAX_SOFTIRQ`` の値を越えてソフト割り込みを実行したり、``MAX_SOFTIRQ_RESTART`` の回数を越えて連続した再スケジューリングを行うことはできません。
 
-これらの制限に到達してしまうと、特別なカーネル・スレッドである **ksoftirqd** が起床し、保留中の全ての Soft IRQs がこのカーネル・スレッドのコンテキストから実行されます。
+これらの制限に到達してしまうと、特別なカーネル・スレッドである **ksoftirqd** が起床し、保留中の全てのソフト割り込みがこのカーネル・スレッドのコンテキストから実行されます。
 
-Soft IRQs の使用に関しては制限があり、低いレイテンシが必須ないくつかのサブシステムによって使用されます。
-カーネル 4.19 の場合の、Soft IRQs は次のとおりです：
+ソフト割り込みの使用に関しては制限があり、低いレイテンシが必須ないくつかのサブシステムによって使用されます。
+カーネル 4.19 の場合のソフト割り込みは次のとおりです：
 
     * HI_SOFTIRQ
     * TIMER_SOFTIRQ
@@ -350,41 +350,45 @@ Soft IRQs の使用に関しては制限があり、低いレイテンシが必�
     * HRTIMER_SOFTIRQ,
     * RCU_SOFTIRQ
 
-#### Tasklets
 
-   Tasklets are a dynamic type (not limited to a fixed number) of deferred work running in interrupt context.
+#### タスクレット（*Tasklets*）
 
-   Tasklets API:
+   タスクレットは割り込みコンテキストの中で実行される先延ばしが可能なタスクの「動的」版（決まった数の上限はなし）です。
 
-    * initialization: :c:func:`tasklet_init`
-    * activation: :c:func:`tasklet_schedule`
-    * masking: :c:func:`tasklet_disable`, :c:func:`tasklet_enable`
+   タスクレットの API:
 
-   Tasklets are implemented on top of two dedicated softirqs:
-   :c:macro:`TASKLET_SOFITIRQ` and :c:macro:`HI_SOFTIRQ`
+   * 初期化: ``tasklet_init()``
+   * 活性化: ``tasklet_schedule()``
+   * masking: ``tasklet_disable()` と ``tasklet_enable()``
 
-   Tasklets are also serialized, i.e. the same tasklet can only execute on one processor.
+   タスクレットは次の二つのソフト割り込みの先頭で実装されています：
+   ``TASKLET_SOFITIRQ`` マクロと ``HI_SOFTIRQ`` マクロ
+
+   さらにタスクレットは「シリアライズ化（*Serialize*）」されています。
+   すなわち、同じタスクレットは１個のプロセッサだけで処理されます。
 
 
-#### Workqueues
+#### ワークキュー（*Workqueues*）
 
-   Workqueues are a type of deferred work that runs in process context.
+   ワークキューはプロセス・コンテキストの中で実行される先延ばしが可能なタスクです。
 
-   They are implemented on top of kernel threads.
+   これらはカーネル・スレッドの先頭で実装されています。
 
-   Workqueues API:
+   ワークキューの API:
 
-    * init: :c:macro:`INIT_WORK`
-    * activation: :c:func:`schedule_work`
+   * 初期化: ``INIT_WORK`` マクロ
+   * 活性化: ``schedule_work()``
 
-#### Timers
 
-    Timers are implemented on top of the :c:macro:`TIMER_SOFTIRQ`
+#### タイマー（*Timers*）
 
-    Timer API:
+   タイマーは ``TIMER_SOFTIRQ`` マクロの先頭で実装されています。
 
-    * initialization: :c:func:`setup_timer`
-    * activation: :c:func:`mod_timer`
+   タイマーの API:
+
+   * 初期化: ``setup_timer()``
+   * 活性化: ``func:`mod_timer()``
+
 
 ---
 
