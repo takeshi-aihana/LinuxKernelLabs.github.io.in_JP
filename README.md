@@ -12,3 +12,5 @@ Japanese translation of [Linux Kernel Teaching](https://linux-kernel-labs.github
 
 * [システム・コール](/syscalls.rst.md#システムコール)
 
+* [割り込み](/interrupts.rst.md#割り込み)
+
