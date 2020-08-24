@@ -255,7 +255,7 @@ Linux の割り込み処理には３つのフェーズがあります： ``criti
 
 #### ネストした割り込みと例外
 
-多くのアーキテクチャでは「割り込みのネスト[訳注1]」が許されています。
+多くのアーキテクチャでは「割り込みのネスト」[訳注1]が許されています。
 
   * [訳注1] 任意の割り込みハンドラの中で別の割り込みを受け付ける処理のこと。これを実現するには CPU が割り込みを受けた時に、まず割り込みコントローラに割り込みを受け付けたことを知らせ、これによって割り込みコントローラはまた別の割り込みを発生させることができるようになる（但し、同じ種類の割り込みは不可）。
 
@@ -295,19 +295,19 @@ Linux の割り込み処理には３つのフェーズがあります： ``criti
 
 Linux では処理を先延ばしできるタスクが３種類あります：
 
-   * ソフト割り込み（*soft IRQ*）
+   * ソフト割り込み（*Soft IRQ*）
 
      * 割り込みコンテキストの中で実行する
      * 静的に確保される
      * 同じハンドラが複数のコアの上で並列して実行される場合がある
 
-   * タスクレット（*tasklet*）
+   * タスクレット（*Tasklet*）
 
      * 割り込みコンテキストの中で実行する
      * 動的に確保される場合がある
-     * 同じハンドラが複数個に分けられて実行される（*serialized*）
+     * 同じハンドラが複数個に分けられて実行される（*Serialized*）
 
-   * ワークキュー （*workqueues*）
+   * ワークキュー （*Workqueues*）
 
      * プロセス・コンテキストの中で実行する
 
@@ -322,9 +322,9 @@ Linux では処理を先延ばしできるタスクが３種類あります：
 
  ソフト割り込みの API:
 
-   * 初期化: ``open_softirq()``
-   * 活性化: ``raise_softirq()``
-   * mask: ``local_bh_disable()`` と  ``local_bh_enable()``
+   * 初期化: ``open_softirq()`` 関数
+   * 活性化: ``raise_softirq()`` 関数
+   * mask: ``local_bh_disable()`` 関数と  ``local_bh_enable()`` 関数
 
  一度、活性化されるとコールバック関数の ``do_softirq()`` が次のいずれかのタイミングで実行されます：
 
@@ -347,7 +347,7 @@ Linux では処理を先延ばしできるタスクが３種類あります：
     * IRQ_POLL_SOFTIRQ
     * TASKLET_SOFTIRQ
     * SCHED_SOFTIRQ
-    * HRTIMER_SOFTIRQ,
+    * HRTIMER_SOFTIRQ
     * RCU_SOFTIRQ
 
 
@@ -357,9 +357,9 @@ Linux では処理を先延ばしできるタスクが３種類あります：
 
    タスクレットの API:
 
-   * 初期化: ``tasklet_init()``
-   * 活性化: ``tasklet_schedule()``
-   * masking: ``tasklet_disable()` と ``tasklet_enable()``
+   * 初期化: ``tasklet_init()`` 関数
+   * 活性化: ``tasklet_schedule()`` 関数
+   * masking: ``tasklet_disable()`` 関数と ``tasklet_enable()`` 関数
 
    タスクレットは次の二つのソフト割り込みの先頭で実装されています：
    ``TASKLET_SOFITIRQ`` マクロと ``HI_SOFTIRQ`` マクロ
@@ -377,7 +377,7 @@ Linux では処理を先延ばしできるタスクが３種類あります：
    ワークキューの API:
 
    * 初期化: ``INIT_WORK`` マクロ
-   * 活性化: ``schedule_work()``
+   * 活性化: ``schedule_work()`` 関数
 
 
 #### タイマー（*Timers*）
@@ -386,8 +386,8 @@ Linux では処理を先延ばしできるタスクが３種類あります：
 
    タイマーの API:
 
-   * 初期化: ``setup_timer()``
-   * 活性化: ``func:`mod_timer()``
+   * 初期化: ``setup_timer()`` 関数
+   * 活性化: ``func:`mod_timer()`` 関数
 
 
 ---
