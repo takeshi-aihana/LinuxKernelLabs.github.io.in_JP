@@ -3,71 +3,71 @@
 
 ---
 
-## 完全対照型マルチプロセッシング
+## 対照型マルチプロセッシング
 
 ### この講義の目的
 
-   * Kernel Concurrency
+   * カーネルの並列処理
 
-   * Atomic operations
+   * アトミックな操作
 
-   * Spin locks
+   * スピン・ロック
 
-   * Cache thrashing
+   * キャッシュのスラッシング（*thrashing*）
 
-   * Optimized spin locks
+   * 最適化したスピン・ロック
 
-   * Process and Interrupt Context Synchronization
+   * プロセスと割り込みコンテキストの同期
 
-   * Mutexes
+   * ミューテックス（*Mutexes*）
 
-   * Per CPU data
+   * CPU ごとのデータ
 
-   * Memory Ordering and Barriers
+   * メモリ・オーダリング（*Ordering*）とメモリ・バリア（*Barrier*）
 
-   * Read-Copy Update
+   * リート・コピー・アップデート（*Read-Copy Update*）
 
 
 ### 同期の基本
 
-Because the Linux kernel supports symmetric multi-processing (SMP) it must use a set of synchronization mechanisms to achieve predictable results, free of race conditions.
+Linux カーネルが「対照型マルチプロセッシング（**SMP**）」をサポートしているので、一連の同期メカニズムを使用して競合状態のない予想どおりの結果を出してあげる必要があります。
+
+
+---
 
 ##### Note
 
-We will use the terms core, CPU and processor as interchangeable for the purpose of this lecture.
+この講義ではコア（*Core*）と CPU とプロセッサという用語を同じ意味で使用しています。
+
+---
+
+次に示す二つの状態が同時に発生すると競合状態になる可能性があります：
+
+   * 「並列」実行される実行コンテキストが最低二つ存在する状態:
+
+     * 完全に並列実行する（例: 二つのシステム・コールが別々のプロセッサで処理される）
+
+     * 複数ある実行コンテキストの一つが他の実行コンテキストを任意にプリエンプトする（CPU の実行権を奪う）（例： 割り込みがシステム・コールをプリエンプトする）
+
+   * 実行コンテキストが共有メモリに対して読み書きのアクセスを実行すると言う状態
 
 
-Race conditions can occur when the following two conditions happen simultaneously:
+競合状態は、実行コンテキストが CPU コア上でかなり特殊な順番でスケジューリングされた時にだけ出現するので、デバッグが困難で間違った結果につながる可能性があります。
 
-   * there are at least two execution contexts that run in "parallel":
-
-     * truly run in parallel (e.g. two system calls running on
-       different processors)
-
-     * one of the contexts can arbitrary preempt the other (e.g. an
-       interrupt preempts a system call)
-
-   * the execution contexts perform read-write accesses to shared
-     memory
-
-
-Race conditions can lead to erroneous results that are hard to debug, because they manifest only when the execution contexts are scheduled on the CPU cores in a very specific order.
-
-A classical race condition example is an incorrect implementation for a release operation of a resource counter:
+古典的な競合状態の例として、間違ったリソース・カウンタの実装を持ったリソースの解放処理があります：
 
 ```c
 
       void release_resource()
       {
-           counter--;
+          counter--;
 
-	   if (!counter)
-               free_resource();
+          if (!counter)
+              free_resource();
       }
 ```
-      
-A resource counter is used to keep a shared resource available until the last user releases it but the above implementation has a race condition that can cause freeing the resource twice:
 
+リソース・カウンタは共有リソースを最後の使用者が解放するまで利用できるようにしておくための仕組みですが、上記の実装には競合状態になるとリソースを二回解放する問題があります。
 
 ![](images/Fig22-RaceConditionScenario.png)
 
@@ -132,9 +132,13 @@ There are multiple source of concurrency in the Linux kernel that depend on the 
 
    * **multi-core systems**: above + the current process can run in parallel with another process or with an interrupt running on another processor
 
+---
+
 ##### Note
 
 We only discuss kernel concurrency and that is why a non-preemptive kernel running on an single core system has interrupts as the only source of concurrency.
+
+---
 
 
 ### Atomic operations
