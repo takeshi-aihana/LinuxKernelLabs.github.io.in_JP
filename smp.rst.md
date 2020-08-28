@@ -25,7 +25,7 @@
 
    * メモリ・オーダリング（*Ordering*）とメモリ・バリア（*Barrier*）
 
-   * リート・コピー・アップデート（*Read-Copy Update*）
+   * リード・コピー・アップデート（*Read-Copy Update*）
 
 
 ### 同期の基本
@@ -37,7 +37,7 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
 
 ##### Note
 
-この講義ではコア（*Core*）と CPU とプロセッサという用語を同じ意味で使用しています。
+この講義では「コア（*Core*）」と「CPU」 と「プロセッサ」という用語を同じ意味で使用しています。
 
 ---
 
@@ -49,7 +49,7 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
 
      * 複数ある実行コンテキストの一つが他の実行コンテキストを任意にプリエンプトする（CPU の実行権を奪う）（例： 割り込みがシステム・コールをプリエンプトする）
 
-   * 実行コンテキストが共有メモリに対して読み書きのアクセスを実行すると言う状態
+   * 実行コンテキストが共有メモリに対して読み書きのアクセスを実行している状態
 
 
 競合状態は、実行コンテキストが CPU コア上でかなり特殊な順番でスケジューリングされた時にだけ出現するので、デバッグが困難で間違った結果につながる可能性があります。
@@ -103,23 +103,22 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
     | cEEE     	       	   |
     +----------------------+
 
-In most cases the `release_resource()` function will only free the resource once.
-However, in the scenario above, if thread A is preempted right after decrementing `counter` and thread B calls `release_resource()` it will cause the resource to be freed.
-When resumed, thread A will also free the resource since the counter value is 0.
+ほとんどの場合、``release_resource()`` 関数はリソースを一度だけ解放します。
+しかし、上の例では ``counter`` を一つ減らした直後にスレッド A がプリエンプトされ、代わりにスレッド B が ``release_resource()`` を呼び出すとリソースが解放されます。
+それからスレッド A に制御が復帰したら、``counter`` が 0 なのでリソースが解放されてしまいます。
 
-To avoid race conditions the programmer must first identify the critical section that can generate a race condition.
-The critical section is the part of the code that reads and writes shared memory from multiple parallel contexts.
+この競合状態を回避するには、プログラマはまずその競合状態を生み出す「クリティカル・セクション（*Critical Section*）」を特定する必要があります。
+クリティカル・セクションは複数の並列コンテキストから共有メモリを読み書きするコードの一部です。
 
-In the example above, the minimal critical section is starting with the counter decrement and ending with checking the counter's value.
+上の例で最小のクリティカル・セクションとは ``counter`` を一つ減らす処理から、``counter`` の値を確認するまでです。
 
-Once the critical section has been identified race conditions can be avoided by using one of the following approaches:
+一度、クリティカル・セクションを特定したら、次のいずれか一つの方法で競合状態を回避できます：
 
-   * make the critical section **atomic** (e.g. use atomic instructions)
+   * クリティカル・セクションを **アトミック（*atomic*）** にする（例： アトミックな命令を使う）
 
-   * **disable preemption** during the critical section (e.g. disable interrupts, bottom-half handlers, or thread preemption)
+   * クリティカル・セクションの間は **プリエンプトを無効にする** （例：割り込みやボトム・ハーフのハンドラ、あるいはスレッドのプリエンプトを無効にする）
 
-   * **serialize the access** to the critical section (e.g. use spin locks or mutexes to allow only one context or thread in the critical section)
-
+   * クリティカル・セクションに対する **アクセスをシリアル化する** （例：スピン・ロックやミューテックスを使用し、クリティカル・セクションではコンテキストやスレッドを一個だけ許可する）
 
 
 ### Linux kernel concurrency sources
