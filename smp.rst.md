@@ -30,7 +30,7 @@
 
 ### 同期の基本
 
-Linux カーネルが「対照型マルチプロセッシング（**SMP**）」をサポートしているので、一連の同期メカニズムを使用して競合状態のない予想どおりの結果を出してあげる必要があります。
+Linux カーネルが「対照型マルチプロセッシング（**SMP**）」をサポートしているので、一連の同期メカニズムを使用して競合状態のない期待したとおりの結果を出してあげる必要があります。
 
 
 ---
@@ -43,18 +43,17 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
 
 次に示す二つの状態が同時に発生すると競合状態になる可能性があります：
 
-   * 「並列」実行される実行コンテキストが最低二つ存在する状態:
+   1. 「並列」実行される実行コンテキストが最低二つ存在する状態:
 
      * 完全に並列実行する（例: 二つのシステム・コールが別々のプロセッサで処理される）
 
      * 複数ある実行コンテキストの一つが他の実行コンテキストを任意にプリエンプトする（CPU の実行権を奪う）（例： 割り込みがシステム・コールをプリエンプトする）
 
-   * 実行コンテキストが共有メモリに対して読み書きのアクセスを実行している状態
-
+   1. 実行コンテキストが共有メモリに対して読み書きのアクセスを実行している状態
 
 競合状態は、実行コンテキストが CPU コア上でかなり特殊な順番でスケジューリングされた時にだけ出現するので、デバッグが困難で間違った結果につながる可能性があります。
 
-古典的な競合状態の例として、間違ったリソース・カウンタの実装を持ったリソースの解放処理があります：
+ここに、古典的な競合状態の例として間違ったリソース・カウンタの実装を持ったリソースの解放処理があります：
 
 ```c
 
@@ -71,46 +70,14 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
 
 ![](images/Fig22-RaceConditionScenario.png)
 
-                             counter is 2
-
-        Thread A                                Thread B
-
-           *
-           |
-           |
-     +---------------------+
-     |  dec counter        |   counter is 1
-     |  cEEE        	   |
-     +---------------------+
-           |
-           |                 B preempts A
-           +-----------------------------------------------+
-                                                           |
-	                                                   v
-			   			    +----------------------+
-                             counter is 0           | dec counter  	   |
-                                                    | if (!counter)	   |
-                           resource is freed        |     free_resource(); |
-			   			    | cEEE    	       	   |
-			   			    +----------------------+
-                        B finishes, A continues            |
-           +-----------------------------------------------+
-           |
-           v
-    +----------------------+
-    | if (!counter)	   |
-    |     free_resource(); | resource is freed
-    | cEEE     	       	   |
-    +----------------------+
-
-ほとんどの場合、``release_resource()`` 関数はリソースを一度だけ解放します。
-しかし、上の例では ``counter`` を一つ減らした直後にスレッド A がプリエンプトされ、代わりにスレッド B が ``release_resource()`` を呼び出すとリソースが解放されます。
-それからスレッド A に制御が復帰したら、``counter`` が 0 なのでリソースが解放されてしまいます。
+通常、``release_resource()`` 関数はリソースを一度だけ解放します。
+しかし上の例で、``counter`` を一つ減らした直後にスレッド A がプリエンプトされ、代わりにスレッド B が ``release_resource()`` を呼び出した場合でもリソースが解放されます。
+それからスレッド A に制御が戻ったら、``counter`` は 0 なのでリソースが解放されてしまいます（これがリソース解放が二回行われる問題です）。
 
 この競合状態を回避するには、プログラマはまずその競合状態を生み出す「クリティカル・セクション（*Critical Section*）」を特定する必要があります。
 クリティカル・セクションは複数の並列コンテキストから共有メモリを読み書きするコードの一部です。
 
-上の例で最小のクリティカル・セクションとは ``counter`` を一つ減らす処理から、``counter`` の値を確認するまでです。
+上の例で言うと、最小のクリティカル・セクションは ``counter`` を一つ減らす処理から、``counter`` の値を確認するまでです。
 
 一度、クリティカル・セクションを特定したら、次のいずれか一つの方法で競合状態を回避できます：
 
@@ -118,29 +85,30 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
 
    * クリティカル・セクションの間は **プリエンプトを無効にする** （例：割り込みやボトム・ハーフのハンドラ、あるいはスレッドのプリエンプトを無効にする）
 
-   * クリティカル・セクションに対する **アクセスをシリアル化する** （例：スピン・ロックやミューテックスを使用し、クリティカル・セクションではコンテキストやスレッドを一個だけ許可する）
+   * クリティカル・セクションに対する **アクセスをシリアル化する** （例：スピン・ロックやミューテックスを使用し、クリティカル・セクションを実行できるコンテキストやスレッドを一個だけに限定する）
 
 
-### Linux kernel concurrency sources
+### Linux カーネルのいろいろな並列処理（*Linux kernel concurrency sources*）
 
-There are multiple source of concurrency in the Linux kernel that depend on the kernel configuration as well as the type of system it runs on:
+Linux カーネルにはカーネルの設定と、そのカーネルを実行するシステムの種類に応じた並列処理が複数あります：
 
-   * **single core systems**, **non-preemptive kernel**: the current process can be preempted by interrupts
+   * **シングル・コアのシステム** ＋ **非プリエンプティブ・カーネル**: 現在のプロセスは割り込みによってプリエンプト（実行が中断）することが可能
 
-   * **single core systems**, **preemptive kernel**: above + the current process can be preempted by other processes
+   * **シングル・コアのシステム** ＋  **プリエンプティブ・カーネル**: 上記に加え、現在のプロセスは他のプロセスによってプリエンプト（実行が中断）することが可能
 
-   * **multi-core systems**: above + the current process can run in parallel with another process or with an interrupt running on another processor
+   * **マルチ・コアのシステム**: 上記に加え、現在のプロセスは別のプロセスまたは別のプロセッサで実行中の割り込みと平行して実行することが可能
+
 
 ---
 
 ##### Note
 
-We only discuss kernel concurrency and that is why a non-preemptive kernel running on an single core system has interrupts as the only source of concurrency.
+この講義ではカーネルの並列処理についてのみ説明します。シングル・コアのシステムで動いている非プリエンプティブ・カーネルの場合、プロセスと並列で処理されるのは割り込み処理だけになります。
 
 ---
 
 
-### Atomic operations
+### アトミックな操作（*Atomic operations*）
 
 In certain circumstances we can avoid race conditions by using atomic operations that are provided by hardware.
 Linux provides a unified API to access atomic operations:
@@ -209,40 +177,22 @@ In order to provide atomic operations on SMP systems different architectures use
                                    +------------+               +-------------+
 
 
-On ARM the LDREX and STREX instructions are used together to guarantee
-atomic access: LDREX loads a value and signals the exclusive monitor
-that an atomic operation is in progress. The STREX attempts to store a
-new value but only succeeds if the exclusive monitor has not detected
-other exclusive operations. So, to implement atomic operations the
-programmer must retry the operation (both LDREX and STREX) until the
-exclusive monitor signals a success.
+On ARM the LDREX and STREX instructions are used together to guarantee atomic access: LDREX loads a value and signals the exclusive monitor that an atomic operation is in progress.
+The STREX attempts to store a new value but only succeeds if the exclusive monitor has not detected other exclusive operations.
+So, to implement atomic operations the programmer must retry the operation (both LDREX and STREX) until the exclusive monitor signals a success.
 
-Although they are often interpreted as "light" or "efficient"
-synchronization mechanisms (because they "don't require spinning or
-context switches", or because they "are implemented in hardware so
-they must be more efficient", or because they "are just instructions
-so they must have similar efficiency as other instructions"), as seen
-from the implementation details, atomic operations are actually
-expensive.
+Although they are often interpreted as "light" or "efficient" synchronization mechanisms (because they "don't require spinning or context switches", or because they "are implemented in hardware so they must be more efficient", or because they "are just instructions so they must have similar efficiency as other instructions"), as seen from the implementation details, atomic operations are actually expensive.
 
 
 Disabling preemption (interrupts)
 =================================
 
-On single core systems and non preemptive kernels the only source of
-concurrency is the preemption of the current thread by an
-interrupt. To prevent concurrency is thus sufficient to disable
-interrupts.
+On single core systems and non preemptive kernels the only source of concurrency is the preemption of the current thread by an interrupt.
+To prevent concurrency is thus sufficient to disable interrupts.
 
-This is done with architecture specific instructions, but Linux offers
-architecture independent APIs to disable and enable interrupts:
+This is done with architecture specific instructions, but Linux offers architecture independent APIs to disable and enable interrupts:
 
-.. slide:: Synchronization with interrupts (x86)
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
-
+```c
        #define local_irq_disable() \
            asm volatile („cli” : : : „memory”)
 
@@ -258,35 +208,23 @@ architecture independent APIs to disable and enable interrupts:
           asm volatile ("push %0 ; popf"
                         : /* no output */
                         : "g" (flags) :"memory", "cc");
+```
 
+Although the interrupts can be explicitly disabled and enable with ``local_irq_disable()`` and ``local_irq_enable()`` these APIs should only be used when the current state and interrupts is known.
+They are usually used in core kernel code (like interrupt handling).
 
-Although the interrupts can be explicitly disabled and enable with
-:c:func:`local_irq_disable` and :c:func:`local_irq_enable` these APIs
-should only be used when the current state and interrupts is
-known. They are usually used in core kernel code (like interrupt
-handling).
-
-For typical cases where we want to avoid interrupts due to concurrency
-issues it is recommended to use the :c:func:`local_irq_save` and
-:c:func:`local_irq_restore` variants. They take care of saving and
-restoring the interrupts states so they can be freely called from
-overlapping critical sections without the risk of accidentally
-enabling interrupts while still in a critical section, as long as the
-calls are balanced.
+For typical cases where we want to avoid interrupts due to concurrency issues it is recommended to use the ``local_irq_save()`` and ``local_irq_restore()`` variants.
+They take care of saving and restoring the interrupts states so they can be freely called from overlapping critical sections without the risk of accidentally enabling interrupts while still in a critical section, as long as the calls are balanced.
 
 Spin Locks
 ==========
 
-Spin locks are used to serialize access to a critical section. They
-are necessary on multi-core systems where we can have true execution
-parallelism. This is a typical spin lock implementation:
+Spin locks are used to serialize access to a critical section.
+They are necessary on multi-core systems where we can have true execution parallelism.
+This is a typical spin lock implementation:
 
 
-.. slide:: Spin Lock Implementation Example (x86)
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: asm
+```asm
 
       spin_lock:
           lock bts [my_lock], 0
@@ -296,48 +234,32 @@ parallelism. This is a typical spin lock implementation:
 
       spin_unlock:
           mov [my_lock], 0
+```
 
-   **bts dts, src** - bit test and set; it copies the src bit from the dts
-   memory address to the carry flag and then sets it:
+   **bts dts, src** - bit test and set; it copies the src bit from the dts memory address to the carry flag and then sets it:
 
-   .. code-block:: c
+```c
 
       CF <- dts[src]
       dts[src] <- 1
+```
+
+As it can be seen, the spin lock uses an atomic instruction to make sure that only one core can enter the critical section.
+If there are multiple cores trying to enter they will continuously "spin" until the lock is released.
+
+While the spin lock avoids race conditions, it can have a significant impact on the system's performance due to "lock contention":
 
 
-As it can be seen, the spin lock uses an atomic instruction to make
-sure that only one core can enter the critical section. If there are
-multiple cores trying to enter they will continuously "spin" until the
-lock is released.
+   * There is lock contention when at least one core spins trying to enter the critical section lock
 
-While the spin lock avoids race conditions, it can have a significant
-impact on the system's performance due to "lock contention":
-
-
-.. slide:: Lock Contention
-   :inline-contents: True
-   :level: 2
-
-   * There is lock contention when at least one core spins trying to
-     enter the critical section lock
-
-   * Lock contention grows with the critical section size, time spent
-     in the critical section and the number of cores in the system
+   * Lock contention grows with the critical section size, time spent in the critical section and the number of cores in the system
 
 
 Another negative side effect of spin locks is cache thrashing.
 
-.. slide:: Cache Thrashing
-   :inline-contents: True
-   :level: 2
+   Cache thrashing occurs when multiple cores are trying to read and write to the same memory resulting in excessive cache misses.
 
-   Cache thrashing occurs when multiple cores are trying to read and
-   write to the same memory resulting in excessive cache misses.
-
-   Since spin locks continuously access memory during lock contention,
-   cache thrashing is a common occurrence due to the way cache
-   coherency is implemented.
+   Since spin locks continuously access memory during lock contention, cache thrashing is a common occurrence due to the way cache coherency is implemented.
 
 
 Cache coherency in multi-processor systems
