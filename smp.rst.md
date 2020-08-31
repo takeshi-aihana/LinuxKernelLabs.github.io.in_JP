@@ -274,11 +274,7 @@ In the figure below we present a view of the memory hierarchy with two
 variables A and B that fall into different cache lines and where
 caches and the main memory are synchronized:
 
-.. slide:: Synchronized caches and memory
-   :inline-contents: True
-   :level: 2
-
-   |_|
+![](images/Fig25-SynchronizedCachesMemory.png)
 
    .. ditaa::
 
@@ -303,13 +299,7 @@ In the absence of a synchronization mechanism between the caches and
 main memory, when CPU 0 executes `A = A + B` and CPU 1 executes `B =
 A + B` we will have the following memory view:
 
-.. slide:: Unsynchronized caches and memory
-   :inline-contents: True
-   :level: 2
-
-   |_|
-
-   .. ditaa::
+![](images/Fig26-UnsynchronizedCachesMemory.png)
 
         +-------+             +-------+
         | CPU 0 |             | CPU 1 |
@@ -406,13 +396,7 @@ where the first has acquired the spin lock and it is running the
 critical section while the other two are spinning waiting to enter the
 critical section:
 
-.. slide:: Cache thrashing due to spin lock contention
-   :inline-contents: True
-   :level: 2
-
-   |_|
-
-   .. ditaa::
+![](images/Fig27-CacheThrashingBySpinLockContention.png)
 
       +-------+                     +-------+                  +-------+
       | CPU 0 |<---------------+    | CPU 1 |   Invalidate     | CPU 0 |
@@ -507,13 +491,7 @@ implementation uses a queued spin lock where the CPU cores spin on
 different locks (hopefully distributed in different cache lines) to
 avoid cache invalidation operations:
 
-.. slide:: Queued Spin Locks
-   :inline-contents: True
-   :level: 2
-
-   |_|
-
-   .. ditaa::
+![](images/Fig28-QueuedSpinLocks.png)
 
            +-------------------------------------------+
            |              Queued Spin Lock        cEEE |
@@ -940,13 +918,7 @@ RCU splits removal updates to the data structures in two phases:
 As an example, lets take a look on how to delete an element from a
 list using RCU:
 
-.. slide:: RCU List Delete
-   :inline-contents: True
-   :level: 2
-
-   |_|
-
-   .. ditaa::
+![](images/Fig29-RcuListDelete.png)
 
          (1) List Traversal                          (2) Removal
                                                     +-----------+
