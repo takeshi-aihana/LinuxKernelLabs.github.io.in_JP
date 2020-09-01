@@ -41,6 +41,7 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
 
 ---
 
+
 次に示す二つの状態が同時に発生すると競合状態になる可能性があります：
 
    1. 「並列」実行される実行コンテキストが最低二つ存在する状態:
@@ -110,22 +111,23 @@ Linux カーネルにはカーネルの設定と、そのカーネルを実行�
 
 ### アトミックな操作（*Atomic operations*）
 
-In certain circumstances we can avoid race conditions by using atomic operations that are provided by hardware.
-Linux provides a unified API to access atomic operations:
+特定の状況ではハードウェアが提供する「アトミックな操作（*Atomic operations*)」を使えば競合状態を回避することは可能です。
+Linux ではアトミックな操作にアクセスするための（ハードウェアに依存しない）統一的な API を提供しています：
 
-   * integer based:
+   * 整数系:
 
-     * simple: ``atomic_inc()``、``atomic_dec()``、``atomic_add()``, ``atomic_sub()``
+     * 簡易版: ``atomic_inc()``、``atomic_dec()``、``atomic_add()``, ``atomic_sub()``
 
-     * conditional: ``atomic_dec_and_test()``、``atomic_sub_and_test()``
+     * 条件付き: ``atomic_dec_and_test()``、``atomic_sub_and_test()``
 
-   * bit based:
+   * ビット系:
 
-     * simple: ``test_bit()``、``set_bit()``、``change_bit()``
+     * 簡易版: ``test_bit()``、``set_bit()``、``change_bit()``
 
-     * conditional: ``test_and_set_bit()``、``test_and_clear_bit()``、``test_and_change_bit()``
+     * 条件付き: ``test_and_set_bit()``、``test_and_clear_bit()``、``test_and_change_bit()``
 
-For example, we could use :c:func:`atomic_dec_and_test` to implement the resource counter decrement and value checking atomic:
+
+例えば ``atomic_dec_and_test()`` という関数を使って、リソース・カウンタを一つ減らしその値をチェックするという一連のアトミックな処理を実装できます。
 
 ```c
 
@@ -136,46 +138,24 @@ For example, we could use :c:func:`atomic_dec_and_test` to implement the resourc
       }
 ```
 
-One complication with atomic operations is encountered in multi-core systems, where an atomic operation is not longer atomic at the system level (but still atomic at the core level).
+アトミックな操作に伴う複雑さの一つがマルチ・コアシステムで発生するという点です。すなわち、アトミックな操作はシステム・レベルではアトミックではなくなるということです（但し、コア・レベルでは依然としてアトミックです）。
 
-To understand why, we need to decompose the atomic operation in memory loads and stores.
-Then we can construct race condition scenarios where the load and store operations are interleaved across CPUs, like in the example below where incrementing a value from two processors will produce an unexpected result:
+この理由を理解するために、アトミックな操作をメモリのロードとストアの操作に分解する必要があります。
+すると、ロードとストアの命令が複数の CPU 間で交互に処理されるような状態で競合状態が発生するシナリオを作ることができます。
+例えば、一つの値を二つのプロセッサを使ってカウントアップすると予期しない結果が生じるといった以下の例のようなものです：
+
 
 ![](images/Fig23-AtomicOperationMayNotBe.png)
 
-                                   +------------+
-                                   |   Memory   |
-     +-------------+   LOAD (0)    |            |               +-------------+
-     |    CPU 0    |<--------------|   v <- 0   |    LOAD (0)   |    CPU 1    |
-     |             |   STORE (1)   |            |-------------->|             |
-     |    inc v    |-------------->|   v <- 1   |    STORE (1)  |    inc v    |
-     | cEEE        |               |   v <- 1   |<--------------| cEEE        |
-     +-------------+               | cEEE       |               +-------------+
-                                   +------------+
 
+SMP のシステムでアトミックな操作を提供するために、異なるアーキテクチャがそれぞれ異なる方法を採用しています。
+例えば x86 アーキテクチャの場合は ``LOCK`` という接頭詞を使い、この接頭詞が付いている操作を実行している間はシステムバスをロックします：
 
-In order to provide atomic operations on SMP systems different architectures use different techniques. For example, on x86 a LOCK prefix is used to lock the system bus while executing the prefixed operation:
 
 ![](images/Fig24-FixingAtomicOperation.png)
 
-                                   +------------+
-     +-------------+   BUS LOCK    |   Memory   |
-     |    CPU 1    |<------------->|            |
-     |             |   LOAD (0)    |            |
-     |    inc v    |<--------------|   v <- 0   |
-     |             |   STORE (1)   |            |
-     |             |-------------->|   v <- 1   |
-     |             |  BUS UNLOCK   |            |
-     | cEEE        |<------------->|            |   BUS LOCK    +-------------+
-     +-------------+               |            |<------------->|    CPU 1    |
-                                   |            |   LOAD (1)    |             |
-                                   |            |<--------------|    inc v    |
-                                   |   v <- 2   |   STORE (2)   |             |
-                                   |            |-------------->|             |
-                                   |            |  BUS UNLOCK   |             |
-                                   | cEEE       |<------------->| cEEE        |
-                                   +------------+               +-------------+
 
+ARM アーキテクチャの場合は
 
 On ARM the LDREX and STREX instructions are used together to guarantee atomic access: LDREX loads a value and signals the exclusive monitor that an atomic operation is in progress.
 The STREX attempts to store a new value but only succeeds if the exclusive monitor has not detected other exclusive operations.
