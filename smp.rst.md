@@ -155,22 +155,22 @@ SMP のシステムでアトミックな操作を提供するために、異な�
 ![](images/Fig24-FixingAtomicOperation.png)
 
 
-ARM アーキテクチャの場合は
+ARM アーキテクチャの場合は ``LDREX`` 命令と ``STREX`` 命令を一緒に使用してアトミックなアクセスを保証しています。
+``LDREX`` 命令は値をロードしアトミックな操作が進行中であることを「排他モニタ（*Exclusive Monitor*）」に通知します。
+次に ``STREX`` 命令が新しい値をストアしようとしますが、排他モニタが他の排他処理を検出していなかった場合にのみストアが成功します。
+したがって、アトミックな操作を実現するためにプログラマは、排他モニタが排他処理可能であることを通知するまで（``LDREX`` と ``STREX`` の両方の）処理をリトライさせる必要があります。
 
-On ARM the LDREX and STREX instructions are used together to guarantee atomic access: LDREX loads a value and signals the exclusive monitor that an atomic operation is in progress.
-The STREX attempts to store a new value but only succeeds if the exclusive monitor has not detected other exclusive operations.
-So, to implement atomic operations the programmer must retry the operation (both LDREX and STREX) until the exclusive monitor signals a success.
-
-Although they are often interpreted as "light" or "efficient" synchronization mechanisms (because they "don't require spinning or context switches", or because they "are implemented in hardware so they must be more efficient", or because they "are just instructions so they must have similar efficiency as other instructions"), as seen from the implementation details, atomic operations are actually expensive.
+この方式はしばしば「軽量な」または「効率が良い」同期メカニズムとして解釈されます
+（その理由は「この方式がスピン・ロックやコンテキスト・スイッチが不要だから」とか、「この方式がハードウェアの実装なので、もっと効率よくなるはずだ」とか、「この方式はただの命令なので、他の命令と同様に効率がよくないといけない」というものがあります）。
+しかし実装の詳細を見るとわかるように、アトミックな操作は実際には「コストが高い」処理であることがわかります。
 
 
-Disabling preemption (interrupts)
-=================================
+### プリエンプティブ機能の無力化（割り込み）
 
-On single core systems and non preemptive kernels the only source of concurrency is the preemption of the current thread by an interrupt.
-To prevent concurrency is thus sufficient to disable interrupts.
+シングル・コアのシステムでかつ非プリエンプティブなカーネルにおける並列処理は、現在のスレッドが一個の割り込みによってプリエンプト（実行が中断）されるケースだけです。
+したがって並列処理にならにようにするには割り込みを無効にするだけでことがたります。
 
-This is done with architecture specific instructions, but Linux offers architecture independent APIs to disable and enable interrupts:
+これはアーキテクチャ毎に専用の命令を実行することで実現されていますが、Linux では割り込みを無効にしたり有効するアーキテクチャに依存しない API をいくつか提供しています。
 
 ```c
        #define local_irq_disable() \
