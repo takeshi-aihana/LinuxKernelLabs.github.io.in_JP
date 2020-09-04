@@ -168,7 +168,7 @@ ARM アーキテクチャの場合は ``LDREX`` 命令と ``STREX`` 命令を一
 ### プリエンプティブ機能の無効化（割り込み）
 
 （前述のとおり、）シングル・コアのシステムで非プリエンプティブなカーネルにおける並列処理とは、現在のスレッドが一個の割り込みによってプリエンプト（実行が中断）されるケースしかありません。
-したがって並列処理にならないようにするには割り込みを無効にするだけで事が足ります。
+したがって並列処理にならないようにするには割り込みを無効（*Disabling*）にするだけで事が足ります。
 
 これはアーキテクチャ毎に専用の命令を実行することで実現されていますが、Linux では「アーキテクチャに依存せずに」割り込みを無効にしたり有効する API をいくつか提供しています：
 
@@ -190,18 +190,22 @@ ARM アーキテクチャの場合は ``LDREX`` 命令と ``STREX`` 命令を一
                         : "g" (flags) :"memory", "cc");
 ```
 
-Although the interrupts can be explicitly disabled and enable with ``local_irq_disable()`` and ``local_irq_enable()`` these APIs should only be used when the current state and interrupts is known.
-They are usually used in core kernel code (like interrupt handling).
+割り込みは ``local_irq_disable()`` と ``local_irq_enable()`` マクロで明示的に有効にしたり無効にすることができますが、これらの API は現在の状態（APIを呼び出す時の状態）と何の割り込みなのかが分かっている場合にのみ使用して下さい。
+これらは、通常は（割り込み処理といった）カーネル・コードのコア部で使用されます。
 
-For typical cases where we want to avoid interrupts due to concurrency issues it is recommended to use the ``local_irq_save()`` and ``local_irq_restore()`` variants.
-They take care of saving and restoring the interrupts states so they can be freely called from overlapping critical sections without the risk of accidentally enabling interrupts while still in a critical section, as long as the calls are balanced.
+並列処理に伴う問題のために割り込みそのものを回避したいという典型的なケースでは、``local_irq_save()`` と ``local_irq_restore()`` 系の関数の使用が推奨されています。
+これらは割り込みの状態を保存したり復元する関数ですが、これらの関数を正しく呼び出している限り**[訳注1]**、クリティカル・セクションで作業している最中に誤って割り込みを有効にしてしまうといったリスクを犯すことなく、重複するクリティカル・セクションから自由に呼び出すことができます。
 
-Spin Locks
-==========
+**[訳注]**
 
-Spin locks are used to serialize access to a critical section.
-They are necessary on multi-core systems where we can have true execution parallelism.
-This is a typical spin lock implementation:
+保存（``local_irq_save()``）と復元（``local_irq_restore()``）の呼び出し回数がそれぞれ同じである状態
+
+
+### スピン・ロック
+
+「**スピン・ロック**（*Spin Lock*）」はクリティカル・セクションへのアクセスをシリアル化（*serialize*）する際に使用します。
+これは、真の並行処理が可能なマルチ・コアシステムで必要となるメカニズムです。
+次が典型的なスピン・ロックの実装です：
 
 
 ```asm
@@ -210,13 +214,13 @@ This is a typical spin lock implementation:
           lock bts [my_lock], 0
 	  jc spin_lock
 
-      /* critical section */
+      /* クリティカル・セクション */
 
       spin_unlock:
           mov [my_lock], 0
 ```
 
-   **bts dts, src** - bit test and set; it copies the src bit from the dts memory address to the carry flag and then sets it:
+   **bts dts, src** - （*bit test and set*）この命令は ``dts`` のメモリ・アドレスから ``src`` ビットをキャリー・フラグ ``CF`` にコピーして、それをセットする
 
 ```c
 
@@ -224,22 +228,18 @@ This is a typical spin lock implementation:
       dts[src] <- 1
 ```
 
-As it can be seen, the spin lock uses an atomic instruction to make sure that only one core can enter the critical section.
-If there are multiple cores trying to enter they will continuously "spin" until the lock is released.
+ご覧のとおり、スピン・ロックはアトミック命令を使い、クリティカル・セクションに入れるコアは一つだけであることを保証しています。
+もし複数のコアがクリティカル・セクションに入ろうとしたら、ロックが解放されるまで、コアはそれこそぶっ続けに「スピン」し続けます。
 
-While the spin lock avoids race conditions, it can have a significant impact on the system's performance due to "lock contention":
+   * 少なくとも１個のコアがクリティカル・セクションのロックに入ろうとするとロックの競合が発生する
 
+   * ロックの競合は、クリティカル・セクションの規模、クリティカル・セクションで費やした時間, そしてシステム内のコア数とともに大きくなる
 
-   * There is lock contention when at least one core spins trying to enter the critical section lock
+スピン・ロックにあるもう一つの（マイナス面の）副作用はキャッシュのスラッシング（Cache Thrashing）です。
 
-   * Lock contention grows with the critical section size, time spent in the critical section and the number of cores in the system
+キャッシュのスラッシングは、複数のコアが同じメモリを読み書きした結果、過度なキャッシュ・ミスが起こった場合に発生します。
 
-
-Another negative side effect of spin locks is cache thrashing.
-
-   Cache thrashing occurs when multiple cores are trying to read and write to the same memory resulting in excessive cache misses.
-
-   Since spin locks continuously access memory during lock contention, cache thrashing is a common occurrence due to the way cache coherency is implemented.
+スピン・ロックはロックの競合中にメモリに連続的にアクセスするため、「キャッシュ・コヒーレンス（*Cache Coherence*）」が実装されているが故にキャッシュ・スラッシングがよく発生します。
 
 
 Cache coherency in multi-processor systems
