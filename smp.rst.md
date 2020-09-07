@@ -194,18 +194,24 @@ ARM アーキテクチャの場合は ``LDREX`` 命令と ``STREX`` 命令を一
 これらは、通常は（割り込み処理といった）カーネル・コードのコア部で使用されます。
 
 並列処理に伴う問題のために割り込みそのものを回避したいという典型的なケースでは、``local_irq_save()`` と ``local_irq_restore()`` 系の関数の使用が推奨されています。
-これらは割り込みの状態を保存したり復元する関数ですが、これらの関数を正しく呼び出している限り**[訳注1]**、クリティカル・セクションで作業している最中に誤って割り込みを有効にしてしまうといったリスクを犯すことなく、重複するクリティカル・セクションから自由に呼び出すことができます。
+これらは割り込みの状態を保存したり復元する関数ですが、これらの関数を正しく呼び出している限り**【訳注１】**、クリティカル・セクションで作業している最中に誤って割り込みを有効にしてしまうといったリスクを犯すことなく、重複するクリティカル・セクションから自由に呼び出すことができます。
 
-**[訳注]**
+**【訳注１】**
 
 保存（``local_irq_save()``）と復元（``local_irq_restore()``）の呼び出し回数がそれぞれ同じである状態
 
 
 ### スピン・ロック
 
-「**スピン・ロック**（*Spin Lock*）」はクリティカル・セクションへのアクセスをシリアル化（*serialize*）する際に使用します。
+「**スピン・ロック**（*Spin Lock*）」はクリティカル・セクションへのアクセスをシリアル化（*serialize*）する**【訳注２】**際に使用します。
+
+**【訳注２】**
+
+順番付けする。クリティカル・セクションへのアクセスを順番ずつにする。
+
 これは、真の並行処理が可能なマルチ・コアシステムで必要となるメカニズムです。
 次が典型的なスピン・ロックの実装です：
+
 
 
 ```asm
@@ -228,7 +234,7 @@ ARM アーキテクチャの場合は ``LDREX`` 命令と ``STREX`` 命令を一
       dts[src] <- 1
 ```
 
-ご覧のとおり、スピン・ロックはアトミック命令を使い、クリティカル・セクションに入れるコアは一つだけであることを保証しています。
+ご覧のとおり、スピン・ロックはアトミック命令を使って、クリティカル・セクションに入ることができるコアは一つだけであることを保証します。
 もし複数のコアがクリティカル・セクションに入ろうとしたら、ロックが解放されるまで、コアはそれこそぶっ続けに「スピン」し続けます。
 
    * 少なくとも１個のコアがクリティカル・セクションのロックに入ろうとするとロックの競合が発生する
@@ -242,94 +248,35 @@ ARM アーキテクチャの場合は ``LDREX`` 命令と ``STREX`` 命令を一
 スピン・ロックはロックの競合中にメモリに連続的にアクセスするため、「キャッシュ・コヒーレンス（*Cache Coherence*）」が実装されているが故にキャッシュ・スラッシングがよく発生します。
 
 
-Cache coherency in multi-processor systems
-==========================================
+### マルチ・プロセッサ型のシステムにおけるキャッシュ・コヒーレンス（*Cache Coherence*）
 
-The memory hierarchy in multi-processor systems is composed of local
-CPU caches (L1 caches), shared CPU caches (L2 caches) and the main
-memory. To explain cache coherency we will ignore the L2 cache and
-only consider the L1 caches and main memory.
+マルチ・プロセッサ型のシステムにおける物理メモリはローカル CPU のキャッシュ（L1 キャッシュ）、共有 CPU のキャッシュ（L2 キャッシュ）、そしてメイン・メモリから構成されています。
+ここでキャッシュ・コヒーレンスを説明するために L2 キャッシュを無視し、L1 キャッシュとメイン・メモリだけ考慮することにします。
 
-In the figure below we present a view of the memory hierarchy with two
-variables A and B that fall into different cache lines and where
-caches and the main memory are synchronized:
+下の図は、変数Aと変数Bがそれぞれ異なるキャッシュ・ラインに分類され、キャッシュとメイン・メモリが同期されているメモリの階層の状態を示しています：
 
 ![](images/Fig25-SynchronizedCachesMemory.png)
 
-   .. ditaa::
-
-        +-------+             +-------+
-        | CPU 0 |             | CPU 1 |
-        +-------+             +-------+
-          cache                 cache
-        +-------+             +-------+
-      A |   1   |             |   1   | A
-        +-------+             +-------+
-      B |   2   |             |   2   | B
-        +-------+             +-------+
-                     memory
-        +-----------------------------+
-      A |              1              |
-        +-----------------------------+
-      B |              2              |
-        +-----------------------------+
-
-
-In the absence of a synchronization mechanism between the caches and
-main memory, when CPU 0 executes `A = A + B` and CPU 1 executes `B =
-A + B` we will have the following memory view:
+キャッシュとメイン・メモリの間で同期するメカニズムが無い場合、CPU0 が ``A = A + B`` を実行し、CPU1 が ``B = A + B`` をそれぞれ実行すると、上の状態は次のようになります：
 
 ![](images/Fig26-UnsynchronizedCachesMemory.png)
 
-        +-------+             +-------+
-        | CPU 0 |             | CPU 1 |
-        +-------+             +-------+
-        A <- A + B            B <- A + B
+上の図のような状態を回避するために、マルチ・プロセッサ型のシステムはキャッシュ・コヒーレンスを使用します。
+このキャッシュ・コヒーレンスには主に二つの種類があります：
 
-        +-------+             +-------+
-      A |   3   |             |   1   | A
-        +-------+             +-------+
-      B |   2   |             |   3   | B
-        +-------+             +-------+
-	       write back caches
-        +-----------------------------+
-      A |              1              |
-        +-----------------------------+
-      B |              2              |
-        +-----------------------------+
+   * バス・スヌーピング（*Bus Snooping / Sniffing*）系：メモリ・バスのトランザクションがキャッシュによって監視され、一貫性（コヒーレンス）を維持するためのアクションを実行する
+
+   * ディレクトリ系： キャッシュの状態を維持する別のディレクトリがある：
+     キャッシュはディレクトリと相互に作用して一貫性（コヒーレンス）を維持する
+
+バス・スヌーピングは他と比較してメカニズムは単純ですが、コア数が 32〜64 を超えるとパフォーマンスが低下します。
+
+ディレクトリ系のキャッシュ・コヒーレンスは他と比較してはるかに優れており（コア数は最大数千個）、NUMA システムでも標準の機能です。
 
 
-In order to avoid the situation above multi-processor systems use
-cache coherency protocols. There are two main types of cache coherency
-protocols:
-
-.. slide:: Cache Coherency Protocols
-   :inline-contents: True
-   :level: 2
-
-   * Bus snooping (sniffing) based: memory bus transactions are
-     monitored by caches and they take actions to preserve
-     coherency
-
-   * Directory based: there is a separate entity (directory) that
-     maintains the state of caches; caches interact with directory
-     to preserve coherency
-
-   Bus snooping is simpler but it performs poorly when the number of
-   cores goes beyond 32-64.
-
-   Directory based cache coherence protocols scale much better (up
-   to thousands of cores) and are usually used in NUMA systems.
-
-
-A simple cache coherency protocol that is commonly used in practice is
-MESI (named after the acronym of the cache line states names:
-**Modified**, **Exclusive**, **Shared** and **Invalid**). It's main
-characteristics are:
-
-.. slide:: MESI Cache Coherence Protocol
-   :inline-contents: True
-   :level: 2
+A simple cache coherency protocol that is commonly used in practice is MESI (named after the acronym of the cache line states names:
+**Modified**, **Exclusive**, **Shared** and **Invalid**).
+It's main characteristics are:
 
    * Caching policy: write back
 
@@ -343,38 +290,32 @@ characteristics are:
 
      * Invalid : the line is not cached
 
-Issuing read or write requests from CPU cores will trigger state
-transitions, as exemplified below:
+Issuing read or write requests from CPU cores will trigger state transitions, as exemplified below:
 
-.. slide:: MESI State Transitions
-   :inline-contents: True
-   :level: 2
+   * Invalid -> Exclusive: read request, all other cores have the line in Invalid;
+     line loaded from memory
 
-   * Invalid -> Exclusive: read request, all other cores have the line
-     in Invalid; line loaded from memory
+   * Invalid -> Shared: read request, at least one core has the line in Shared or Exclusive;
+     line loaded from sibling cache
 
-   * Invalid -> Shared: read request, at least one core has the line
-     in Shared or Exclusive; line loaded from sibling cache
+   * Invalid/Shared/Exclusive -> Modified: write request; **all other** cores **invalidate** the line
 
-   * Invalid/Shared/Exclusive -> Modified: write request; **all
-     other** cores **invalidate** the line
-
-   * Modified -> Invalid: write request from other core; line is
-     flushed to memory
+   * Modified -> Invalid: write request from other core;
+     line is flushed to memory
 
 
-.. note:: The most important characteristic of the MESI protocol is
-          that it is a write-invalidate cache protocol. When writing to a
-	  shared location all other caches are invalidated.
+---
 
-This has important performance impact in certain access patterns, and
-one such pattern is contention for a simple spin lock implementation
-like we discussed above.
+##### Note
 
-To exemplify this issue lets consider a system with three CPU cores,
-where the first has acquired the spin lock and it is running the
-critical section while the other two are spinning waiting to enter the
-critical section:
+The most important characteristic of the MESI protocol is that it is a write-invalidate cache protocol.
+When writing to a shared location all other caches are invalidated.
+
+---
+
+This has important performance impact in certain access patterns, and one such pattern is contention for a simple spin lock implementation like we discussed above.
+
+To exemplify this issue lets consider a system with three CPU cores, where the first has acquired the spin lock and it is running the critical section while the other two are spinning waiting to enter the critical section:
 
 ![](images/Fig27-CacheThrashingBySpinLockContention.png)
 
@@ -402,20 +343,12 @@ critical section:
 
                                     cache miss
 
-As it can be seen from the figure above due to the writes issued by
-the cores spinning on the lock we see frequent cache line invalidate
-operations which means that basically the two waiting cores will flush
-and load the cache line while waiting for the lock, creating
-unnecessary traffic on the memory bus and slowing down memory accesses
-for the first core.
+As it can be seen from the figure above due to the writes issued by the cores spinning on the lock we see frequent cache line invalidate operations which means that basically the two waiting cores will flush and load the cache line while waiting for the lock, creating unnecessary traffic on the memory bus and slowing down memory accesses for the first core.
 
-Another issue is that most likely data accessed by the first CPU
-during the critical section is stored in the same cache line with the
-lock (common optimization to have the data ready in the cache after
-the lock is acquired). Which means that the cache invalidation
-triggered by the two other spinning cores will slow down the execution
-of the critical section which in turn triggers more cache invalidate
-actions.
+Another issue is that most likely data accessed by the first CPU during the critical section is stored in the same cache line with the lock
+(common optimization to have the data ready in the cache after the lock is acquired).
+
+Which means that the cache invalidation triggered by the two other spinning cores will slow down the execution of the critical section which in turn triggers more cache invalidate actions.
 
 Optimized spin locks
 ====================
