@@ -44,13 +44,13 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
 
 次に示す二つの状態が同時に発生すると競合状態になる可能性があります：
 
-   1. 「並列」実行される実行コンテキストが最低二つ存在する状態:
+ 1. 「並列」実行される実行コンテキストが最低二つ存在する状態:
 
-     * 完全に並列実行する（例: 二つのシステム・コールが別々のプロセッサで処理される）
+    * 完全に並列実行する（例: 二つのシステム・コールが別々のプロセッサで処理される）
 
-     * 複数ある実行コンテキストの一つが他の実行コンテキストを任意にプリエンプトする（CPU の実行権を奪う）（例： 割り込みがシステム・コールをプリエンプトする）
+    * 複数ある実行コンテキストの一つが他の実行コンテキストを任意にプリエンプトする（CPU の実行権を奪う）（例： 割り込みがシステム・コールをプリエンプトする）
 
-   2. 実行コンテキストが共有メモリに対して読み書きのアクセスを実行している状態
+ 2. 実行コンテキストが共有メモリに対して読み書きのアクセスを実行している状態
 
 競合状態は、実行コンテキストが CPU コア上でかなり特殊な順番でスケジューリングされた時にだけ出現するので、デバッグが困難で間違った結果につながる可能性があります。
 
@@ -308,35 +308,12 @@ MESI プロトコルのもっとも重要な特徴は「書き込み無効化の
 
 ---
 
-This has important performance impact in certain access patterns, and one such pattern is contention for a simple spin lock implementation like we discussed above.
+これは、特定のアクセス・パタンではパフォーマンスに大きな影響を及ぼし、上で説明したような単純なスピン・ロックの実装でさえも競合が発生するパタンがあります。
 
-To exemplify this issue lets consider a system with three CPU cores, where the first has acquired the spin lock and it is running the critical section while the other two are spinning waiting to enter the critical section:
+このような問題を説明する例として、３個の CPU コアを持つシステムについて考えてみることにしましょう。
+最初の CPU コアはスピン・ロックを獲得してクリティカル・セクションを実行していますが、他の二つの CPU コアはクリティカル・セクションに入るためにスピンしながら待っているという状況です：
 
 ![](images/Fig27-CacheThrashingBySpinLockContention.png)
-
-      +-------+                     +-------+                  +-------+
-      | CPU 0 |<---------------+    | CPU 1 |   Invalidate     | CPU 0 |
-      | cache |<-------------+ |    | cache |<---+ +---------->| cache |
-      +-------+  Invalidate  | |    +-------+    | |           +-------+
-                             | |                 | |
-                             | |                 +----------------------------+
-      spin_lock(&lock);      | |                   |                          |
-                             | |     READ lock     |                          |
-                             | +---- WRITE lock ---+                          |
-                             |                                                |
-                             |                                 READ lock      |
-                             +-------------------------------- WRITE lock ----+
-
-         ...                            ...                       ...
-      READ data                      READ lock                 READ lock
-          |                              |                         |
-          |                              |                         |
-          |                              |                         |
-          +------------------------------+-------------------------+
-                                         |
-                                         v
-
-                                    cache miss
 
 As it can be seen from the figure above due to the writes issued by the cores spinning on the lock we see frequent cache line invalidate operations which means that basically the two waiting cores will flush and load the cache line while waiting for the lock, creating unnecessary traffic on the memory bus and slowing down memory accesses for the first core.
 
