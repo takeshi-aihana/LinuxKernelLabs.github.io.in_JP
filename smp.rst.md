@@ -50,7 +50,7 @@ Linux カーネルが「対照型マルチプロセッシング（**SMP**）」�
 
      * 複数ある実行コンテキストの一つが他の実行コンテキストを任意にプリエンプトする（CPU の実行権を奪う）（例： 割り込みがシステム・コールをプリエンプトする）
 
-   1. 実行コンテキストが共有メモリに対して読み書きのアクセスを実行している状態
+   2. 実行コンテキストが共有メモリに対して読み書きのアクセスを実行している状態
 
 競合状態は、実行コンテキストが CPU コア上でかなり特殊な順番でスケジューリングされた時にだけ出現するので、デバッグが困難で間違った結果につながる可能性があります。
 
@@ -261,55 +261,50 @@ ARM アーキテクチャの場合は ``LDREX`` 命令と ``STREX`` 命令を一
 
 ![](images/Fig26-UnsynchronizedCachesMemory.png)
 
-上の図のような状態になるのを回避するために、マルチ・コアのシステムはキャッシュ・コヒーレンスを使用します。
-このキャッシュ・コヒーレンスには主に二つの種類があります：
+上の図のような状態になるのを回避するために、マルチ・コアのシステムはキャッシュ・コヒーレンスの仕組み（プロトコル）を使用します。
+このプロトコルには主に二つの種類があります：
 
    * バス・スヌーピング（*Bus Snooping / Sniffing*）系：メモリ・バスのトランザクションがキャッシュによって監視され、一貫性（コヒーレンス）を維持するためのアクションを実行する
 
    * ディレクトリ系： キャッシュの状態を維持する別のディレクトリがある：
      キャッシュはディレクトリと相互に作用して一貫性（コヒーレンス）を維持する
 
-バス・スヌーピングは他と比較してメカニズムは単純ですが、コア数が 32〜64 を超えるとパフォーマンスが低下します。
+バス・スヌーピングは他と比較して仕組みは単純ですが、コア数が 32〜64 を超えるとパフォーマンスが低下します。
 
-ディレクトリ系のキャッシュ・コヒーレンスは他と比較してはるかに優れており（コア数は最大数千個）、NUMA システムでも標準の機能です。
+ディレクトリ系のキャッシュ・コヒーレンスのプロトコルは他と比較してはるかに優れており（コア数は最大で数千個）、NUMA システムでも標準の機能です。
 
+実際のところ、一般的に使用される軽量なキャッシュ・コヒーレンスのプロトコルは MESI です（この用語はキャッシュ・ラインの状態名の頭文字をつなげたものです：**M**odified、**E**xclusive、**S**hared、**I**nvalid）。
+主な特徴は次のとおりです：
 
-A simple cache coherency protocol that is commonly used in practice is MESI (named after the acronym of the cache line states names:
-**Modified**, **Exclusive**, **Shared** and **Invalid**).
-It's main characteristics are:
+   * キャッシュする方針: 書き戻し（*Write Back*）
 
-   * Caching policy: write back
+   * キャッシュ・ラインの状態
 
-   * Cache line states
+     * Modified（変更）: シングル・コアが所有し、データは変更済（*dirty*）の状態
 
-     * Modified: owned by a single core and dirty
+     * Exclusive（排他）: シングル・コアが所有し、データは書き戻し済（*clean*）の状態
 
-     * Exclusive: owned by a single core and clean
+     * Shared（共有）: 複数のコアで共有中で、データは書き戻し済（*clean*）の状態
 
-     * Shared: shared between multiple cores and clean
+     * Invalid（無効）: ラインはキャッシュされていない
 
-     * Invalid : the line is not cached
+次に示した例のように、CPU コアからキャッシュの読み込みまたは書き込みを行う要求は、キャシュ・ラインの状態遷移に応じて発行されます：
 
-Issuing read or write requests from CPU cores will trigger state transitions, as exemplified below:
+   * Invalid -> Exclusive: 読み込みの要求が発行される（それ以外の全てのコアは Invalid なラインを持つ => ラインはメイン・メモリから読み込まれたデータになる）
 
-   * Invalid -> Exclusive: read request, all other cores have the line in Invalid;
-     line loaded from memory
+   * Invalid -> Shared: 読み込みの要求が発行される（少なくとも一つのコアが Shared または Exclusive なラインを持つ => ラインは「兄弟（*sibling*）」キャッシュから読み込まれたデータになる）
 
-   * Invalid -> Shared: read request, at least one core has the line in Shared or Exclusive;
-     line loaded from sibling cache
+   * Invalid/Shared/Exclusive -> Modified: 書き込みの要求が発行される（**それ以外の全ての** コアはラインを **無効にする**）
 
-   * Invalid/Shared/Exclusive -> Modified: write request; **all other** cores **invalidate** the line
-
-   * Modified -> Invalid: write request from other core;
-     line is flushed to memory
+   * Modified -> Invalid: 他のコアから書き込みの要求が発行される（ラインはメイン・メモリに書き戻される）
 
 
 ---
 
 ##### Note
 
-The most important characteristic of the MESI protocol is that it is a write-invalidate cache protocol.
-When writing to a shared location all other caches are invalidated.
+MESI プロトコルのもっとも重要な特徴は「書き込み無効化のキャッシュ・プロトコル（*Write-Invalidate Cache Protocol*）」の一つであるという点です。
+任意の共有領域にデータを書き込むと、他の全てのキャッシュが無効になります。
 
 ---
 
