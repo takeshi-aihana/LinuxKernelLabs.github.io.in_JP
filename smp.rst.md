@@ -310,20 +310,19 @@ MESI プロトコルのもっとも重要な特徴は「書き込み無効化の
 
 これは、特定のアクセス・パタンではパフォーマンスに大きな影響を及ぼし、上で説明したような単純なスピン・ロックの実装でさえも競合が発生するパタンがあります。
 
-このような問題を説明する例として、３個の CPU コアを持つシステムについて考えてみることにしましょう。
-最初の CPU コアはスピン・ロックを獲得してクリティカル・セクションを実行していますが、他の二つの CPU コアはクリティカル・セクションに入るためにスピンしながら待っているという状況です：
+このような問題を説明する例として、3つの CPU コアを持つシステムについて考えてみることにしましょう。
+1つ目の CPU コアはスピン・ロックを獲得してクリティカル・セクションを実行していますが、他の2つの CPU コアはクリティカル・セクションに入るためにスピンしながら待っているという状況です：
 
 ![](images/Fig27-CacheThrashingBySpinLockContention.png)
 
-As it can be seen from the figure above due to the writes issued by the cores spinning on the lock we see frequent cache line invalidate operations which means that basically the two waiting cores will flush and load the cache line while waiting for the lock, creating unnecessary traffic on the memory bus and slowing down memory accesses for the first core.
+上の図から分かるように、ロック獲得までスピンしている2つのコアによって発行された書き込みの要求のため、キャッシュラインを無効にする操作が頻繁に発生しています。
+この状態は、基本的に2つのコアがロック獲得待ちの間、キャッシュ・ラインを書き出して（*Flush*）新しく読み込む（*Load*）ことでメモリ・バス上に不必要なトラフィックを発生させることになり、最終的に1つ目のコアのメモリ・アクセスの速度が低下するといった事態にまで影響します。
 
-Another issue is that most likely data accessed by the first CPU during the critical section is stored in the same cache line with the lock
-(common optimization to have the data ready in the cache after the lock is acquired).
+これとは別に、1つ目の CPU コアがクリティカル・セクションにいる間に最もよくアクセスされる可能性が高いデータが獲得したロックと同じキャッシュ・ラインに格納されてしまう現象があります
+（これはロックを獲得したあとにキャッシュの中にデータを準備しておくための一般的な最適化による副作用）。
+これは、スピン中の他の2つのコアによって発動されたキャッシュの無効化がクリティカル・セクションの処理が遅くなり、さらに多くのキャッシュ無効化の操作が発動されてしまう問題につながります。
 
-Which means that the cache invalidation triggered by the two other spinning cores will slow down the execution of the critical section which in turn triggers more cache invalidate actions.
-
-Optimized spin locks
-====================
+### スピン・ロックの最適化
 
 As we have seen simple spin lock implementations can have poor
 performance issues due to cache thrashing, especially as the number of
