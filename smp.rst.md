@@ -241,7 +241,7 @@ ARM アーキテクチャの場合は ``LDREX`` 命令と ``STREX`` 命令を一
 
    * ロックの競合は、クリティカル・セクションの規模、クリティカル・セクションで費やした時間, そしてシステム内のコア数とともに大きくなる
 
-スピン・ロックにあるもう一つの（マイナス面の）副作用はキャッシュのスラッシング（Cache Thrashing）です。
+スピン・ロックにあるもう一つの（マイナス面の）副作用はキャッシュのスラッシング（*Cache Thrashing*）です。
 
 キャッシュのスラッシングは、複数のコアが同じメモリを読み書きした結果、過度なキャッシュ・ミスが起こった場合に発生します。
 
@@ -316,64 +316,41 @@ MESI プロトコルのもっとも重要な特徴は「書き込み無効化の
 ![](images/Fig27-CacheThrashingBySpinLockContention.png)
 
 上の図から分かるように、ロック獲得までスピンしている2つのコアによって発行された書き込みの要求のため、キャッシュラインを無効にする操作が頻繁に発生しています。
-この状態は、基本的に2つのコアがロック獲得待ちの間、キャッシュ・ラインを書き出して（*Flush*）新しく読み込む（*Load*）ことでメモリ・バス上に不必要なトラフィックを発生させることになり、最終的に1つ目のコアのメモリ・アクセスの速度が低下するといった事態にまで影響します。
+この状態は、基本的に2つのコアがロック獲得待ちの間、キャッシュ・ラインを書き出して（*Flush*）新しく読み込む（*Load*）ことでメモリ・バス上に不必要なトラフィックを発生させることになり、最終的に1つ目のコアのメモリ・アクセスの速度低下といった事態にまで影響します。
 
-これとは別に、1つ目の CPU コアがクリティカル・セクションにいる間に最もよくアクセスされる可能性が高いデータが獲得したロックと同じキャッシュ・ラインに格納されてしまう現象があります
+これとは別に、1つ目の CPU コアがクリティカル・セクションにいる間に最もよくアクセスされる可能性が高いデータが、獲得したロックと同じキャッシュ・ラインに格納されてしまう現象があります
 （これはロックを獲得したあとにキャッシュの中にデータを準備しておくための一般的な最適化による副作用）。
-これは、スピン中の他の2つのコアによって発動されたキャッシュの無効化がクリティカル・セクションの処理が遅くなり、さらに多くのキャッシュ無効化の操作が発動されてしまう問題につながります。
+これは、スピン中の他の2つのコアによって発動されたキャッシュの無効化で1つ目のコアのクリティカル・セクションの処理が遅くなり、事実上さらに多くのキャッシュラインの無効化が発動されてしまう問題につながります。
 
 ### スピン・ロックの最適化
 
-As we have seen simple spin lock implementations can have poor
-performance issues due to cache thrashing, especially as the number of
-cores increase. To avoid this issue there are two possible strategies:
+既に紹介した単純なスピン・ロックの実装には CPU コアの数が増えるとキャッシュのスラッシングが原因でパフォーマンスが落ちる問題が発生する可能性がることが分かりました。
+この問題を回避するため考えられる方法が次の二つのです：
 
-* reduce the number of writes and thus reduce the number of cache
-  invalidate operations
+* メモリへの書き戻しの数を減らし、それによってキャッシュの無効化の操作を減らす
 
-* avoid the other processors spinning on the same cache line, and thus
-  avoid the cache invalidate operations
+* 他のプロセッサが同じキャッシュ・ラインでスピンしないようにし、それによってキャッシュの無効化の操作を減らす
 
+前者の考え方に基づいて最適化されたスピン・ロックの実装が以下のとおりです：
 
-An optimized spin lock implementation that uses the first approach is
-presented below:
-
-.. slide:: Optimized spin lock (KeAcquireSpinLock)
-   :inline-contents: True
-   :level: 2
-
-   |_|
-
-   .. code-block:: asm
-
+```asm
       spin_lock:
           rep ; nop
           test lock_addr, 1
           jnz spin_lock
           lock bts lock_addr
           jc spin_lock
+```
 
+   * 最初にアトミックではない命令を使ってロックが読み取り専用かどうかをテストして、書き戻しを回避し、スピン中に発生する操作を無効にする
+   * ロックが解放されている「*可能性がある*」場合にのみロックの獲得を試す
 
-   * we first test the lock read only, using a non atomic
-     instructions, to avoid writes and thus invalidate operations
-     while we spin
+また、この実装は **PAUSE** 命令を使って、（誤検出した）メモリのアクセス順序違反（*memory order violation*）によるメモリ・パイプラインのフラッシュを回避し、わずかな遅延（メモリ・バスの周波数に比例する）を追加して消費電力を抑えます。
 
-   * only when the lock *might* be free, we try to acquire it
+Linux カーネルの多くのアーキテクチャでは（経過時間に基づいてクリティカル・セクション内で許可されたCPU コアによる）「公平性（*fairness*）」をサポートした似たような実装が使用されています（[Ticket Spin Lock](https://lwn.net/Articles/267968/) ）。
 
-The implementation also use the **PAUSE** instruction to avoid
-pipeline flushes due to (false positive) memory order violations and
-to add a small delay (proportional with the memory bus frequency) to
-reduce power consumption.
-
-A similar implementation with support for fairness (the CPU cores are
-allowed in the critical section based on the time of arrival) is used
-in the Linux kernel (the `ticket spin lock <https://lwn.net/Articles/267968/>`_)
-for many architectures.
-
-However, for the x86 architecture, the current spin lock
-implementation uses a queued spin lock where the CPU cores spin on
-different locks (hopefully distributed in different cache lines) to
-avoid cache invalidation operations:
+但し、x86 アーキテクチャの場合、現在のスピン・ロックの実装はキューに登録されたスピン・ロックを使用しています。
+これは CPU コアがいろいろなロックをスピンさせてキャッシュの無効化操作を回避しています（可能ならば別のキャッシュ・ラインで分散させる）。
 
 ![](images/Fig28-QueuedSpinLocks.png)
 
@@ -394,21 +371,14 @@ avoid cache invalidation operations:
 
 
 
-Conceptually, when a new CPU core tries to acquire the lock and it
-fails it will add its private lock to the list of waiting CPU
-cores. When the lock owner exits the critical section it unlocks the
-next lock in the list, if any.
+Conceptually, when a new CPU core tries to acquire the lock and it fails it will add its private lock to the list of waiting CPU cores.
+When the lock owner exits the critical section it unlocks the next lock in the list, if any.
 
-While a read spin optimized spin lock reduces most of the cache
-invalidation operations, the lock owner can still generate cache
-invalidate operations due to writes to data structures close to the
-lock and thus part of the same cache line. This in turn generates
-memory traffic on subsequent reads on the spinning cores.
+While a read spin optimized spin lock reduces most of the cache invalidation operations, the lock owner can still generate cache invalidate operations due to writes to data structures close to the lock and thus part of the same cache line.
+This in turn generates memory traffic on subsequent reads on the spinning cores.
 
-Hence, queued spin locks scale much better for large number of cores
-as is the case for NUMA systems. And since they have similar fairness
-properties as the ticket lock it is the preferred implementation on
-the x86 architecture.
+Hence, queued spin locks scale much better for large number of cores as is the case for NUMA systems.
+And since they have similar fairness properties as the ticket lock it is the preferred implementation on the x86 architecture.
 
 
 Process and Interrupt Context Synchronization
