@@ -342,7 +342,7 @@ MESI プロトコルのもっとも重要な特徴は「書き込み無効化の
           jc spin_lock
 ```
 
-   * 最初にアトミックではない命令を使ってロックが読み取り専用かどうかをテストして、書き戻しを回避し、スピン中に発生する操作を無効にする
+   * 最初にアトミックではない命令を使ってロックが読み取り専用かどうかをテストして、スピン中に発生する書き戻しとそれによるキャッシュ無効化の操作を回避する
    * ロックが解放されている「*可能性がある*」場合にのみロックの獲得を試す
 
 また、この実装は **PAUSE** 命令を使って、（誤検出した）メモリのアクセス順序違反（*memory order violation*）によるメモリ・パイプラインのフラッシュを回避し、わずかな遅延（メモリ・バスの周波数に比例する）を追加して消費電力を抑えます。
@@ -354,50 +354,22 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
 
 ![](images/Fig28-QueuedSpinLocks.png)
 
-           +-------------------------------------------+
-           |              Queued Spin Lock        cEEE |
-           |                                           |
-           |   +---+      +---+      +---+      +---+  |
-           |   |   |----->|   |----->|   |----->|   |  |
-           |   +---+      +---+      +---+      +---+  |
-           |     ^          ^          ^          ^    |
-           |     |          |          |          |    |
-           +-------------------------------------------+
-                 |          |	       |          |
-               CPU10      CPU17       CPU99     CPU0
-              owns the   spins on    spins on  spins on
-               lock      private     private   private
-                          lock        lock      lock
+概念的には新しい CPU コアがロックの獲得を試みて失敗すると、その CPUをコアのプライベートなロックを待機中の CPU コアのリストに追加します。
+ロックの所有者がクリティカル・セッションを終了すると、その所有者は（必要であれば）リストにある次のロックを解除します。
+
+スピンの読み込みが最適化されている間、スピン・ロックはキャシュの無効化操作の大部分を低減しますが、ロックがある場所に近いデータ構造、すなわち同じキャッシュ・ラインの一部への書き込みのため、ロックの所有者はキャッシュの無効化操作を依然として生成できてしまいます。
+これにより、ロック獲得のためにスピン中の CPU コアで、次にメモリを読み込む際にトラフィックが発生することになります。
+
+したがってキューに登録されたスピン・ロックは、NUMA システムの場合と同様に、たくさんの CPU コアに対してはるかに優れたスケーリングを実現します。
+そして、このようなスピン・ロックは Ticket Spin Lock と同様に公平性に似た属性を持っているので、x86 アーキテクチャでは推奨されている実装です。
 
 
+### プロセスと割り込みコンテキストの同期
 
-Conceptually, when a new CPU core tries to acquire the lock and it fails it will add its private lock to the list of waiting CPU cores.
-When the lock owner exits the critical section it unlocks the next lock in the list, if any.
+Accessing shared data from both process and interrupt context is a relatively common scenario.
+On single core systems we can do this by disabling interrupts, but that won't work on multi-core systems, as we can have the process running on one CPU core and the interrupt context running on a different CPU core.
 
-While a read spin optimized spin lock reduces most of the cache invalidation operations, the lock owner can still generate cache invalidate operations due to writes to data structures close to the lock and thus part of the same cache line.
-This in turn generates memory traffic on subsequent reads on the spinning cores.
-
-Hence, queued spin locks scale much better for large number of cores as is the case for NUMA systems.
-And since they have similar fairness properties as the ticket lock it is the preferred implementation on the x86 architecture.
-
-
-Process and Interrupt Context Synchronization
-=============================================
-
-Accessing shared data from both process and interrupt context is a
-relatively common scenario. On single core systems we can do this by
-disabling interrupts, but that won't work on multi-core systems,
-as we can have the process running on one CPU core and the interrupt
-context running on a different CPU core.
-
-Using a spin lock, which was designed for multi-processor systems,
-seems like the right solution, but doing so can cause common
-deadlock conditions, as detailed by the following scenario:
-
-
-.. slide:: Process and Interrupt Handler Synchronization Deadlock
-   :inline-contents: True
-   :level: 2
+Using a spin lock, which was designed for multi-processor systems, seems like the right solution, but doing so can cause common deadlock conditions, as detailed by the following scenario:
 
    * In the process context we take the spin lock
 
@@ -410,68 +382,32 @@ deadlock conditions, as detailed by the following scenario:
 
 To avoid this issue a two fold approach is used:
 
+   * In process context: disable interrupts and acquire a spin lock; 
+     this will protect both against interrupt or other CPU cores race conditions (``spin_lock_irqsave()`` and  ``spin_lock_restore()`` combine the two operations)
 
-.. slide:: Interrupt Synchronization for SMP
-   :inline-contents: True
-   :level: 2
-
-   * In process context: disable interrupts and acquire a spin lock;
-     this will protect both against interrupt or other CPU cores race
-     conditions (:c:func:`spin_lock_irqsave` and
-     :c:func:`spin_lock_restore` combine the two operations)
-
-   * In interrupt context: take a spin lock; this will will protect
-     against race conditions with other interrupt handlers or process
-     context running on different processors
+   * In interrupt context: take a spin lock;
+     this will will protect against race conditions with other interrupt handlers or process context running on different processors
 
 
-We have the same issue for other interrupt context handlers such as
-softirqs, tasklets or timers and while disabling interrupts might
-work, it is recommended to use dedicated APIs:
+We have the same issue for other interrupt context handlers such as softirqs, tasklets or timers and while disabling interrupts might work, it is recommended to use dedicated APIs:
 
-.. slide:: Bottom-Half Synchronization for SMP
-   :inline-contents: True
-   :level: 2
+   * In process context use ``spin_lock_bh()`` (which combines ``local_bh_disable()`` and ``spin_lock()``) and ``spin_unlock_bh()`` (which combines ``spin_unlock()`` and ``local_bh_enable()``)
 
-   * In process context use :c:func:`spin_lock_bh` (which combines
-     :c:func:`local_bh_disable` and :c:func:`spin_lock`) and
-     :c:func:`spin_unlock_bh` (which combines :c:func:`spin_unlock` and
-     :c:func:`local_bh_enable`)
-
-   * In bottom half context use: :c:func:`spin_lock` and
-     :c:func:`spin_unlock` (or :c:func:`spin_lock_irqsave` and
-     :c:func:`spin_lock_irqrestore` if sharing data with interrupt
-     handlers)
+   * In bottom half context use: ``spin_lock()`` and ```spin_unlock()`` (or ``spin_lock_irqsave()`` and ``spin_lock_irqrestore()`` if sharing data with interrupt handlers)
 
 
-As mentioned before, another source of concurrency in the Linux kernel
-can be other processes, due to preemption.
+As mentioned before, another source of concurrency in the Linux kernel can be other processes, due to preemption.
 
-.. slide:: Preemption
-   :inline-contents: True
-   :level: 2
+Preemption is configurable: when active it provides better latency  and response time, while when deactivated it provides better throughput.
 
-   |_|
-
-   Preemption is configurable: when active it provides better latency
-   and response time, while when deactivated it provides better
-   throughput.
-
-   Preemption is disabled by spin locks and mutexes but it can be
-   manually disabled as well (by core kernel code).
+Preemption is disabled by spin locks and mutexes but it can be manually disabled as well (by core kernel code).
 
 
-As for local interrupt enabling and disabling APIs, the bottom half
-and preemption APIs allows them to be used in overlapping critical
-sections. A counter is used to track the state of bottom half and
-preemption. In fact the same counter is used, with different increment
-values:
+As for local interrupt enabling and disabling APIs, the bottom half and preemption APIs allows them to be used in overlapping critical sections.
+A counter is used to track the state of bottom half and preemption.
+In fact the same counter is used, with different increment values:
 
-.. slide:: Preemption and Bottom-Half Masking
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
+```c
 
       #define PREEMPT_BITS      8
       #define SOFTIRQ_BITS      8
@@ -492,7 +428,7 @@ values:
       {
           if (in_interrupt()) return;
           ...
-
+```
 
 Mutexes
 =======
