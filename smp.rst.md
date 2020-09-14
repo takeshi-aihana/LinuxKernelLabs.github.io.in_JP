@@ -17,7 +17,7 @@
 
    * 最適化したスピン・ロック
 
-   * プロセスと割り込みコンテキストの同期
+   * プロセスと割り込みのコンテキストの同期
 
    * ミューテックス（*Mutexes*）
 
@@ -364,39 +364,38 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
 そして、このようなスピン・ロックは Ticket Spin Lock と同様に公平性に似た属性を持っているので、x86 アーキテクチャでは推奨されている実装です。
 
 
-### プロセスと割り込みコンテキストの同期
+### プロセスと割り込みのコンテキストの同期
 
-Accessing shared data from both process and interrupt context is a relatively common scenario.
-On single core systems we can do this by disabling interrupts, but that won't work on multi-core systems, as we can have the process running on one CPU core and the interrupt context running on a different CPU core.
+プロセスと割り込みコンテキストの両方から共有データをアクセスすることは、比較的一般的な事象です。
+シングル・コアのシステムの場合は割り込みを無効にすることで実現できますが、1つ目の CPU コアでプロセスを実行し別の CPU コアで割り込みコンテキストを実行するするようなマルチ・コアのシステムで、この方法は通用しません。
 
-Using a spin lock, which was designed for multi-processor systems, seems like the right solution, but doing so can cause common deadlock conditions, as detailed by the following scenario:
+マルチ・コア向けに設計されたスピン・ロックを使うことは妥当な方法に思えますが、次に示すシナリオで詳しく説明するように、この方法だと一般的なデッドロック状態を引き起こす可能性があります。：
 
-   * In the process context we take the spin lock
+   1. プロセスのコンテキストでスピン・ロックを獲得する
 
-   * An interrupt occurs and it is scheduled on the same CPU core
+   1. 一個の割り込みが発生し、割り込みハンドラが同じ CPU コアでスケジューリングされる
 
-   * The interrupt handler runs and tries to take the spin lock
+   1. 割り込みハンドラが呼び出されてスピン・ロックの獲得を試みる
 
-   * The current CPU will deadlock
-
-
-To avoid this issue a two fold approach is used:
-
-   * In process context: disable interrupts and acquire a spin lock; 
-     this will protect both against interrupt or other CPU cores race conditions (``spin_lock_irqsave()`` and  ``spin_lock_restore()`` combine the two operations)
-
-   * In interrupt context: take a spin lock;
-     this will will protect against race conditions with other interrupt handlers or process context running on different processors
+   1. 現在の CPU でデッドロックが発生する
 
 
-We have the same issue for other interrupt context handlers such as softirqs, tasklets or timers and while disabling interrupts might work, it is recommended to use dedicated APIs:
+この問題を回避するために、次の二つの方法を組み合わせて使います：
 
-   * In process context use ``spin_lock_bh()`` (which combines ``local_bh_disable()`` and ``spin_lock()``) and ``spin_unlock_bh()`` (which combines ``spin_unlock()`` and ``local_bh_enable()``)
+   * プロセスのコンテキスト: 割り込みを無効にしてスピン・ロックを獲得する。
+     これで割り込みまたは他の CPU コアの競合状態から保護される（``spin_lock_irqsave()`` と ``spin_lock_restore()`` 関数で、これら二つの操作を実現する）
 
-   * In bottom half context use: ``spin_lock()`` and ```spin_unlock()`` (or ``spin_lock_irqsave()`` and ``spin_lock_irqrestore()`` if sharing data with interrupt handlers)
+   * 割り込みのコンテキスト: スピン・ロックを獲得する。
+     これで他の割り込みハンドラや他の CPU コアで実行されているプロセスのコンテキストから保護される
+
+ソフト割り込み（*Soft IRQ*）やタスクレット（*Tasklet*）、あるいはタイマー割り込みいった他の割り込みハンドラでも、上記と同じ問題が発生します。ここでも割り込みを無効にすることで対応できますが専用の API の使用が推奨されています：
+
+   * プロセスのコンテキストの中では ``spin_lock_bh()`` (これは ``local_bh_disable()`` と ``spin_lock()`` 関数を組み合わせたもの）関数と ``spin_unlock_bh()`` (これは ``spin_unlock()`` と ``local_bh_enable()`` 関数の組み合わせ）関数を使う
+
+   * ボトム・ハーフのコンテキストの中では ``spin_lock()`` と ```spin_unlock()`` 関数を使う（あるいはデータを複数の割り込みハンドラとで共有する場合は ``spin_lock_irqsave()`` と ``spin_lock_irqrestore()`` 関数）
 
 
-As mentioned before, another source of concurrency in the Linux kernel can be other processes, due to preemption.
+前述のように、another source of concurrency in the Linux kernel can be other processes, due to preemption.
 
 Preemption is configurable: when active it provides better latency  and response time, while when deactivated it provides better throughput.
 
