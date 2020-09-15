@@ -392,10 +392,10 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
 
    * プロセスのコンテキストの中では ``spin_lock_bh()`` (これは ``local_bh_disable()`` と ``spin_lock()`` 関数を組み合わせたもの）関数と ``spin_unlock_bh()`` (これは ``spin_unlock()`` と ``local_bh_enable()`` 関数の組み合わせ）関数を使う
 
-   * ボトム・ハーフのコンテキストの中では ``spin_lock()`` と ```spin_unlock()`` 関数を使う（あるいはデータを複数の割り込みハンドラとで共有する場合は ``spin_lock_irqsave()`` と ``spin_lock_irqrestore()`` 関数）
+   * ボトム・ハーフのコンテキストの中では ``spin_lock()`` と ``spin_unlock()`` 関数を使う（あるいはデータを複数の割り込みハンドラとで共有する場合は ``spin_lock_irqsave()`` と ``spin_lock_irqrestore()`` 関数）
 
 
-前述のように、Linux カーネルにおける並列性のもう一つの要因は、他のプロセスになることを可能にする、いわゆる「プリエンプション（*Preemption*）」です。
+前述のように、Linux カーネルにおける並列性のもう一つの要因は、他のプロセスになることを可能にする、すなわち「プリエンプション（*Preemption*）」です。
 
 プリエンプションは有効と無効の切り替えが可能です：有効の時はレイテンシと応答時間が向上し、無効の時はスループットが向上します。
 
@@ -554,40 +554,25 @@ Otherwise we take the slow path where we pick up first waiter from the list and 
 ```
 
 
-Per CPU data
-============
+### CPU ごとのデータ
 
-Per CPU data avoids race conditions by avoiding to use shared
-data. Instead, an array sized to the maximum possible CPU cores is
-used and each core will use its own array entry to read and write
-data. This approach certainly has advantages:
-
-
-.. slide:: Per CPU data
-   :inline-contents: True
-   :level: 2
+Per CPU data avoids race conditions by avoiding to use shared data.
+Instead, an array sized to the maximum possible CPU cores is used and each core will use its own array entry to read and write data.
+This approach certainly has advantages:
 
    * No need to synchronize to access the data
 
    * No contention, no performance impact
 
-   * Well suited for distributed processing where aggregation is only
-     seldom necessary (e.g. statistics counters)
+   * Well suited for distributed processing where aggregation is only seldom necessary (e.g. statistics counters)
 
 
-Memory Ordering and Barriers
-============================
+### メモリ・オーダリング（Ordering）とメモリ・バリア（Barrier）
 
-Modern processors and compilers employ out-of-order execution to
-improve performance. For example, processors can execute "future"
-instructions while waiting for current instruction data to be fetched
-from memory.
+Modern processors and compilers employ out-of-order execution to improve performance.
+For example, processors can execute "future" instructions while waiting for current instruction data to be fetched from memory.
 
 Here is an example of out of order compiler generated code:
-
-.. slide:: Out of Order Compiler Generated Code
-   :inline-contents: True
-   :level: 2
 
    +-------------------+-------------------------+
    | C code            | Compiler generated code |
@@ -600,68 +585,43 @@ Here is an example of out of order compiler generated code:
    |                   |  STORE R10, a		 |
    +-------------------+-------------------------+
 
+---
 
-.. note:: When executing instructions out of order the processor makes
-          sure that data dependency is observed, i.e. it won't execute
-          instructions whose input depend on the output of a previous
-          instruction that has not been executed.
+#### Note:: When executing instructions out of order the processor makes sure that data dependency is observed, i.e. it won't execute instructions whose input depend on the output of a previous instruction that has not been executed.
 
-In most cases out of order execution is not an issue. However, in
-certain situations (e.g. communicating via shared memory between
-processors or between processors and hardware) we must issue some
-instructions before others even without data dependency between them.
+---
+
+In most cases out of order execution is not an issue.
+However, in certain situations (e.g. communicating via shared memory between processors or between processors and hardware) we must issue some instructions before others even without data dependency between them.
 
 For this purpose we can use barriers to order memory operations:
 
-.. slide:: Barriers
-   :inline-contents: True
-   :level: 2
+   * A read barrier (```rmb()``, ``smp_rmb()``) is used to make sure that no read operation crosses the barrier;
+     that is, all read operation before the barrier are complete before executing the first instruction after the barrier
 
-   * A read barrier (:c:func:`rmb()`, :c:func:`smp_rmb()`) is used to
-     make sure that no read operation crosses the barrier; that is,
-     all read operation before the barrier are complete before
-     executing the first instruction after the barrier
+   * A write barrier (``wmb()``, ``smp_wmb()``) is used to make sure that no write operation crosses the barrier
 
-   * A write barrier (:c:func:`wmb()`, :c:func:`smp_wmb()`) is used to
-     make sure that no write operation crosses the barrier
-
-   * A simple barrier (:c:func:`mb()`, :c:func:`smp_mb()`) is used
-     to make sure that no write or read operation crosses the barrier
+   * A simple barrier (``mb()``, ``smp_mb()``) is used to make sure that no write or read operation crosses the barrier
 
 
-Read Copy Update (RCU)
-======================
+リード・コピー・アップデート（*RCU*）
 
-Read Copy Update is a special synchronization mechanism similar with
-read-write locks but with significant improvements over it (and some
-limitations):
-
-.. slide:: Read Copy Update (RCU)
-   :level: 2
-   :inline-contents: True
+Read Copy Update is a special synchronization mechanism similar with read-write locks but with significant improvements over it (and some limitations):
 
    * **Read-only** lock-less access at the same time with write access
 
-   * Write accesses still requires locks in order to avoid races
-     between writers
+   * Write accesses still requires locks in order to avoid races between writers
 
    * Requires unidirectional traversal by readers
 
 
-In fact, the read-write locks in the Linux kernel have been deprecated
-and then removed, in favor of RCU.
+In fact, the read-write locks in the Linux kernel have been deprecated and then removed, in favor of RCU.
 
-Implementing RCU for a new data structure is difficult, but a few
-common data structures (lists, queues, trees) do have RCU APIs that
-can be used.
+Implementing RCU for a new data structure is difficult, but a few common data structures (lists, queues, trees) do have RCU APIs that can be used.
 
 RCU splits removal updates to the data structures in two phases:
 
-.. slide:: Removal and Reclamation
-   :inline-contents: True
-   :level: 2
-
-   * **Removal**: removes references to elements. Some old readers may
+   * **Removal**: removes references to elements. Some old readers may 
      still see the old reference so we can't free the element.
 
    * **Elimination**: free the element. This action is postponed until
