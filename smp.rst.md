@@ -395,16 +395,16 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
    * ボトム・ハーフのコンテキストの中では ``spin_lock()`` と ```spin_unlock()`` 関数を使う（あるいはデータを複数の割り込みハンドラとで共有する場合は ``spin_lock_irqsave()`` と ``spin_lock_irqrestore()`` 関数）
 
 
-前述のように、another source of concurrency in the Linux kernel can be other processes, due to preemption.
+前述のように、Linux カーネルにおける並列性のもう一つの要因は、他のプロセスになることを可能にする、いわゆる「プリエンプション（*Preemption*）」です。
 
-Preemption is configurable: when active it provides better latency  and response time, while when deactivated it provides better throughput.
+プリエンプションは有効と無効の切り替えが可能です：有効の時はレイテンシと応答時間が向上し、無効の時はスループットが向上します。
 
-Preemption is disabled by spin locks and mutexes but it can be manually disabled as well (by core kernel code).
+プリエンプションはスピン・ロックとミューテックスで無効になりますが、手動でも無効にすることができます（カーネルのソースコードから）
 
+ローカルの割り込みを有効にしたり無効する API に関しては、ボトム・ハーフとプリエンプションの API を使ってクリティカル・セクションが重なるところで呼び出すことができます。
+カウンタはボトム・ハーフとプリエンプションの状態を追跡するために使用します。
+実際は同じカウンタを使用し、増分値がそれぞれ異なります：
 
-As for local interrupt enabling and disabling APIs, the bottom half and preemption APIs allows them to be used in overlapping critical sections.
-A counter is used to track the state of bottom half and preemption.
-In fact the same counter is used, with different increment values:
 
 ```c
 
@@ -429,41 +429,23 @@ In fact the same counter is used, with different increment values:
           ...
 ```
 
-Mutexes
-=======
+### ミューテックス（*Mutexes*）
 
-Mutexes are used to protect against race conditions from other CPU
-cores but they can only be used in **process context**. As opposed to
-spin locks, while a thread is waiting to enter the critical section it
-will not use CPU time, but instead it will be added to a waiting queue
-until the critical section is vacated.
+Mutexes are used to protect against race conditions from other CPU cores but they can only be used in **process context**.
+As opposed to spin locks, while a thread is waiting to enter the critical section it will not use CPU time, but instead it will be added to a waiting queue until the critical section is vacated.
 
-Since mutexes and spin locks usage intersect, it is useful to compare
-the two:
+Since mutexes and spin locks usage intersect, it is useful to compare the two:
 
-.. slide:: Mutexes
-   :inline-contents: True
-   :level: 2
-
-   * They don't "waste" CPU cycles; system throughput is better than
-     spin locks if context switch overhead is lower than medium
-     spinning time
+   * They don't "waste" CPU cycles; system throughput is better than spin locks if context switch overhead is lower than medium spinning time
 
    * They can't be used in interrupt context
 
    * They have a higher latency than spin locks
 
-Conceptually, the :c:func:`mutex_lock` operation is relatively simple:
-if the mutex is not acquired we an take the fast path via an atomic
-exchange operation:
+Conceptually, the ``mutex_lock()`` operation is relatively simple: if the mutex is not acquired we an take the fast path via an atomic exchange operation:
 
 
-.. slide:: :c:func:`mutex_lock` fast path
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
-
+```c
       void __sched mutex_lock(struct mutex *lock)
       {
         might_sleep();
@@ -482,16 +464,11 @@ exchange operation:
         return false;
       }
 
+```
 
-otherwise we take the slow path where we add ourselves to the mutex
-waiting list and put ourselves to sleep:
+otherwise we take the slow path where we add ourselves to the mutex waiting list and put ourselves to sleep:
 
-.. slide:: :c:func:`mutex_lock` slow path
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
-
+```c
       ...
         spin_lock(&lock->wait_lock);
       ...
@@ -515,24 +492,17 @@ waiting list and put ourselves to sleep:
         mutex_remove_waiter(lock, &waiter, current);
         spin_lock(&lock->wait_lock);
       ...
+```
+      
+The full implementation is a bit more complex:
+instead of going to sleep immediately it optimistic spinning if it detects that the lock owner is currently running on a different CPU as chances are the owner will release the lock soon.
+It also checks for signals and handles mutex debugging for locking dependency engine debug feature.
 
-The full implementation is a bit more complex: instead of going to
-sleep immediately it optimistic spinning if it detects that the lock
-owner is currently running on a different CPU as chances are the owner
-will release the lock soon. It also checks for signals and handles
-mutex debugging for locking dependency engine debug feature.
 
+The ``mutex_unlock()`` operation is symmetric:
+if there are no waiters on the mutex then we an take the fast path via an atomic exchange operation:
 
-The :c:func:`mutex_unlock` operation is symmetric: if there are no
-waiters on the mutex then we an take the fast path via an atomic exchange
-operation:
-
-.. slide:: :c:func:`mutex_unlock` fast path
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
-
+```c
       void __sched mutex_unlock(struct mutex *lock)
       {
 	if (__mutex_unlock_fast(lock))
@@ -557,21 +527,16 @@ operation:
 		__mutex_set_flag(lock, MUTEX_FLAG_WAITERS);
       ...
 
+```
+---
 
-.. note:: Because :c:type:`struct task_struct` is cached aligned the 7
-          lower bits of the owner field can be used for various flags,
-          such as :c:type:`MUTEX_FLAG_WAITERS`.
+#### Note:: Because ``struct task_struct`` is cached aligned the 7 lower bits of the owner field can be used for various flags, such as ``MUTEX_FLAG_WAITERS``.
 
+---
 
-Otherwise we take the slow path where we pick up first waiter from the
-list and wake it up:
+Otherwise we take the slow path where we pick up first waiter from the list and wake it up:
 
-.. slide:: :c:func:`mutex_unlock` slow path
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
-
+```c
       ...
       spin_lock(&lock->wait_lock);
       if (!list_empty(&lock->wait_list)) {
@@ -586,7 +551,7 @@ list and wake it up:
       spin_unlock(&lock->wait_lock);
       ...
       wake_up_q(&wake_q);
-
+```
 
 
 Per CPU data
