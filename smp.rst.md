@@ -399,7 +399,7 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
 
 プリエンプションは有効と無効の切り替えが可能です：有効の時はレイテンシと応答時間が向上し、無効の時はスループットが向上します。
 
-プリエンプションはスピン・ロックとミューテックスで無効になりますが、手動でも無効にすることができます（カーネルのソースコードから）
+プリエンプションはスピン・ロックとミューテックスで無効になりますが、手動でも無効にすることができます（コアのカーネル・コードを使って）
 
 ローカルの割り込みを有効にしたり無効する API に関しては、ボトム・ハーフとプリエンプションの API を使ってクリティカル・セクションが重なるところで呼び出すことができます。
 カウンタはボトム・ハーフとプリエンプションの状態を追跡するために使用します。
@@ -431,19 +431,18 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
 
 ### ミューテックス（*Mutexes*）
 
-Mutexes are used to protect against race conditions from other CPU cores but they can only be used in **process context**.
-As opposed to spin locks, while a thread is waiting to enter the critical section it will not use CPU time, but instead it will be added to a waiting queue until the critical section is vacated.
+「ミューテックス」は他の CPU コアによる競合状態を回避するために使用されますが、条件として**プロセスのコンテキストでのみ利用可能**です。
+スピン・ロックとは対象的に、任意のスレッドがクリティカル・セクションに入るまでの待機中は CPU 時間を消費しませんが、その代わり、クリティカル・セクションが空きになるまで待機キューに追加されたままになります。
 
-Since mutexes and spin locks usage intersect, it is useful to compare the two:
+ミューテックスとスピン・ロックの使用は被るところがあることから、これらを比較すると便利です：
 
-   * They don't "waste" CPU cycles; system throughput is better than spin locks if context switch overhead is lower than medium spinning time
+   * ミューテックスは CPU 時間を「浪費」することはない。もしコンテキスト・スイッチのオーバーヘッドが中程度のスピン時間よりも小さければ、システムのスループットについてはスピン・ロックよりもミューテックスの方が優れている
 
-   * They can't be used in interrupt context
+   * ミューテックスは割り込みのコンテキストの中では利用できない
 
-   * They have a higher latency than spin locks
+   * ミューテックスはスピン・ロックよりも待ち時間が長い
 
-Conceptually, the ``mutex_lock()`` operation is relatively simple: if the mutex is not acquired we an take the fast path via an atomic exchange operation:
-
+概念的に ``mutex_lock()``関数は比較的単純な実装になっています。ミューテックスを獲得できない場合、アトミックな交換操作を介して高速なパスが手に入ります：
 
 ```c
       void __sched mutex_lock(struct mutex *lock)
@@ -466,7 +465,7 @@ Conceptually, the ``mutex_lock()`` operation is relatively simple: if the mutex 
 
 ```
 
-otherwise we take the slow path where we add ourselves to the mutex waiting list and put ourselves to sleep:
+それ以外の場合、ミューテックスの待機リストに自分を追加して、自分自身をスリープ状態にする低速なパスを使用します：
 
 ```c
       ...
@@ -530,7 +529,9 @@ if there are no waiters on the mutex then we an take the fast path via an atomic
 ```
 ---
 
-#### Note:: Because ``struct task_struct`` is cached aligned the 7 lower bits of the owner field can be used for various flags, such as ``MUTEX_FLAG_WAITERS``.
+#### Note
+
+Because ``struct task_struct`` is cached aligned the 7 lower bits of the owner field can be used for various flags, such as ``MUTEX_FLAG_WAITERS``.
 
 ---
 
