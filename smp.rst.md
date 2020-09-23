@@ -604,7 +604,7 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
    * 汎用なモリ・バリアの操作関数（``mb()`` または ``smp_mb()`` 関数）はメモリの読み込みまたは書き込み操作がバリアを越えて行われないことを保証する際に使用する
 
 
-リード・コピー・アップデート（*RCU*）
+### リード・コピー・アップデート（*RCU*）
 
 Read Copy Update is a special synchronization mechanism similar with read-write locks but with significant improvements over it (and some limitations):
 
@@ -613,7 +613,6 @@ Read Copy Update is a special synchronization mechanism similar with read-write 
    * Write accesses still requires locks in order to avoid races between writers
 
    * Requires unidirectional traversal by readers
-
 
 In fact, the read-write locks in the Linux kernel have been deprecated and then removed, in favor of RCU.
 
