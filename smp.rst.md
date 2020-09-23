@@ -7,23 +7,23 @@
 
 ### この講義の目的
 
-   * カーネルの並列処理
+   * [カーネルの並列処理](/smp.rst.md#linux-カーネルのいろいろな並列処理linux-kernel-concurrency-sources)
 
-   * アトミックな操作
+   * [アトミックな操作](/smp.rst.md#アトミックな操作atomic-operations)
 
-   * スピン・ロック
+   * [スピン・ロック](/smp.rst.md#スピンロック)
 
    * キャッシュのスラッシング（*thrashing*）
 
-   * 最適化したスピン・ロック
+   * [最適化したスピン・ロック](/smp.rst.md#スピンロックの最適化)
 
-   * プロセスと割り込みのコンテキストの同期
+   * [プロセスと割り込みのコンテキストの同期](/smp.rst.md#プロセスと割り込みのコンテキストの同期)
 
-   * ミューテックス（*Mutexes*）
+   * [ミューテックス（*Mutexes*）](/smp.rst.md#ミューテックスmutexes)
 
-   * CPU ごとのデータ
+   * [CPU ごとのデータ](/smp.rst.md#cpu-ごとのデータ)
 
-   * メモリ・オーダリング（*Ordering*）とメモリ・バリア（*Barrier*）
+   * [メモリ・オーダリング（*Ordering*）とメモリ・バリア（*Barrier*）](/smp.rst.md#メモリオーダリングorderingとメモリバリアbarrier)
 
    * リード・コピー・アップデート（*Read-Copy Update*）
 
@@ -587,21 +587,21 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
 
 #### Note:
 
-プロセッサが命令を順不同で実行すると、命令間で使用するデータの依存関係を確認します。すなわち、プロセッサはまだ実行されていない命令の出力に依存する入力を持つ命令は実行しません。
+プロセッサが命令を順不同で実行する際は命令間で使用するデータの依存関係を確認します。すなわち、プロセッサはまだ実行されていない命令の出力に依存する入力を必要とする命令は実行しません。
 
 ---
 
-In most cases out of order execution is not an issue.
-However, in certain situations (e.g. communicating via shared memory between processors or between processors and hardware) we must issue some instructions before others even without data dependency between them.
+大抵の場合、命令を順不同で実行しても問題にはなりません。
+しかしながら、例えば複数のプロセッサ間、または複数のプロセッサとハードウェア間で共有メモリを介した通信といった特定の状況下では、たとえ双方の間でデータの依存関係が無くても、いくつかの命令を他の命令よりも先に実行する必要がでてきます。
 
-For this purpose we can use barriers to order memory operations:
+この目的のために、メモリ・バリアを使用してメモリ操作の命令を順番付けできます：
 
-   * A read barrier (```rmb()``, ``smp_rmb()``) is used to make sure that no read operation crosses the barrier;
-     that is, all read operation before the barrier are complete before executing the first instruction after the barrier
+   * メモリ・バリアの読み込み関数（``rmb()`` または ``smp_rmb()`` 関数） はメモリの読み込み操作がバリアを越えて行われないことを保証する際に使用する。すなわちバリアより前にあるメモリの読み込み操作はすべて、バリアよりも後ろにあるメモリに対する最初の読み込み命令を実行するよりも前に完了する
 
-   * A write barrier (``wmb()``, ``smp_wmb()``) is used to make sure that no write operation crosses the barrier
+   * メモリ・バリアの書き込み関数（``wmb()`` または ``smp_wmb()`` 関数）はメモリの書き込み操作がバリアを越えて行われないことを保証する際に使用する
 
-   * A simple barrier (``mb()``, ``smp_mb()``) is used to make sure that no write or read operation crosses the barrier
+
+   * 汎用なモリ・バリアの操作関数（``mb()`` または ``smp_mb()`` 関数）はメモリの読み込みまたは書き込み操作がバリアを越えて行われないことを保証する際に使用する
 
 
 リード・コピー・アップデート（*RCU*）
