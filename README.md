@@ -14,5 +14,5 @@ Japanese translation of [Linux Kernel Teaching](https://linux-kernel-labs.github
 
 * [割り込み](/interrupts.rst.md#割り込み)
 
-* [対照型マルチプロセッシング](/smp.rst.md#対照型マルチプロセッシング)
+* [対称型マルチプロセッシング](/smp.rst.md#対称型マルチプロセッシング)
 
