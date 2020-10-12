@@ -606,80 +606,37 @@ Linux カーネルの多くのアーキテクチャでは（経過時間に基�
 
 ### リード・コピー・アップデート（*RCU*）
 
-Read Copy Update is a special synchronization mechanism similar with read-write locks but with significant improvements over it (and some limitations):
+「リード・コピー・アップデート（*Read Copy Update*）」は従来のリード・ライト・ロック（*Read-Write Lock*）と同様に特別な同期を提供する仕組みで、リード・ライト・ロックよりも大幅な改善が含まれた版になります（いくつかの制限あり）：
 
-   * **Read-only** lock-less access at the same time with write access
+   * メモリへの書き込みと同じタイミングで、**読み込みだけ**ロックを獲得するすることなくアクセスできる
 
-   * Write accesses still requires locks in order to avoid races between writers
+   * メモリへの書き込みは、複数の書き込みスレッド間で発生する競合を回避するために依然としてロックが必要である
+   
+   * メモリを読み込むスレッドによる一方向のトラバーサル（*Traversal*）が必要である
+   
+実際のところ Linux カーネルのリード・ライト・ロックは非推奨の扱いとなってその実装は削除され、リード・コピー・アップデート（*RCU*）が取って代わりました。
 
-   * Requires unidirectional traversal by readers
+新しいデータ構造に RCU を実装することは難しいですが、いくつかある一般的なデータ構造（リストやキュー、ツリー）には既に利用可能な RCU の API が実装されています。
 
-In fact, the read-write locks in the Linux kernel have been deprecated and then removed, in favor of RCU.
+RCU ではデータ構造に対して「削除による更新」を次の二つの段階に分けて扱います：
 
-Implementing RCU for a new data structure is difficult, but a few common data structures (lists, queues, trees) do have RCU APIs that can be used.
+   * **削除**: データ構造の要素への参照を削除する。一部の古いスレッドは古い参照先を見てしまう可能性があるので要素そのものを解放することはできない。
 
-RCU splits removal updates to the data structures in two phases:
+   * **解放**: データ構造の要素そのものを解放する。この操作は、全ての古いスレッドがトラバーサル（メモリの参照先を次々と読み込んでいく処理）を終了するまで延期される（休止サイクルになる）。参照を「削除」した後に読み込みを始めた新しいスレッドは、この休止サイクルの影響は受けない。
 
-   * **Removal**: removes references to elements. Some old readers may 
-     still see the old reference so we can't free the element.
-
-   * **Elimination**: free the element. This action is postponed until
-     all existing readers finish traversal (quiescent cycle). New
-     readers won't affect the quiescent cycle.
-
-
-As an example, lets take a look on how to delete an element from a
-list using RCU:
+例として、リスト型のデータ構造で任意の要素が RCU を使ってどのように削除されるか見てみることにしましょう：
 
 ![](images/Fig29-RcuListDelete.png)
 
-         (1) List Traversal                          (2) Removal
-                                                    +-----------+
-      +-----+     +-----+     +-----+      +-----+  |  +-----+  |  +-----+
-      |     |     |     |     |     |      |     |  |  |     |  |  |     |
-      |  A  |---->|  B  |---->|  C  |      |  A  |--+  |  B  |--+->|  C  |
-      |     |     |     |     |     |      |     |     |     |     |     |
-      +-----+     +-----+     +-----+      +-----+     +-----+     +-----+
-         ^           ^           ^            ^           ^           ^
-         |           |           |            |           |           |
+In the first step it can be seen that while readers traverse the list all elements are referenced.
+In step two a writer removes element B. Reclamation is postponed since there are still readers that hold references to it.
+In step three a quiescent cycle just expired and it can be noticed that there are no more references to element B. Other elements still have references from readers that started the list traversal after the element was removed.
+In step 4 we finally perform reclamation (free the element).
 
 
+Now that we covered how RCU functions at the high level, lets looks at the APIs for traversing the list as well as adding and removing an element to the list:
 
-
-
-
-
-         (3) Quiescent cycle over                 (4) Reclamation
-               +-----------+
-      +-----+  |  +-----+  |  +-----+      +-----+                 +-----+
-      |     |  |  |     |  |  |     |      |     |                 |     |
-      |  A  |--+  |  B  |  +->|  C  |      |  A  |---------------->|  C  |
-      |     |     |     |     |     |      |     |                 |     |
-      +-----+     +-----+     +-----+      +-----+                 +-----+
-         ^                       ^            ^                       ^
-         |                       |            |                       |
-
-
-In the first step it can be seen that while readers traverse the list
-all elements are referenced. In step two a writer removes
-element B. Reclamation is postponed since there are still readers that
-hold references to it. In step three a quiescent cycle just expired
-and it can be noticed that there are no more references to
-element B. Other elements still have references from readers that
-started the list traversal after the element was removed. In step 4 we
-finally perform reclamation (free the element).
-
-
-Now that we covered how RCU functions at the high level, lets looks at
-the APIs for traversing the list as well as adding and removing an
-element to the list:
-
-
-.. slide:: RCU list APIs cheat sheet
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
+```c
 
       /* list traversal */
       rcu_read_lock();
@@ -700,4 +657,4 @@ element to the list:
       spin_lock(&lock);
       list_add_rcu(head, &node->list);
       spin_unlock(&lock);
-
+```
