@@ -1,28 +1,17 @@
-=========
-Debugging
-=========
+* [目次](/README.md#目次index)
+* [対称型マルチプロセッシング](/smp.rst.md#対称型マルチプロセッシング)
 
-`View slides <debugging-slides.html>`_
+---
 
-.. slideconf::
-   :autoslides: False
-   :theme: single-level
+## Debugging
 
-Lecture objectives:
-===================
+### Lecture objectives:
 
-One essential part of Linux kernel development is debugging. In user space we had
-the support of the kernel so we could easily stop processes and use gdb to inspect
-their behavior. In the kernel, in order to use gdb we need to use hypervisor like
-QEMU or JTAG based hardware interfaces which are not always available. The Linux
-kernel provides a set of tools and debug options useful for investigating abnormal
-behavior.
+One essential part of Linux kernel development is debugging. In user space we had the support of the kernel so we could easily stop processes and use gdb to inspect their behavior.
+In the kernel, in order to use gdb we need to use hypervisor like QEMU or JTAG based hardware interfaces which are not always available.
+The Linux kernel provides a set of tools and debug options useful for investigating abnormal behavior.
 
 In this lecture we will learn about:
-
-.. slide:: Debugging
-   :inline-contents: True
-   :level: 2
 
    * decoding an oops/panic
    * list debugging
@@ -30,22 +19,16 @@ In this lecture we will learn about:
    * locking debugging
    * profiling
 
-Decoding an oops/panic
-======================
+### Decoding an oops/panic
 
 An oops is an inconsistent state that the kernel detects inside itself.
 Upon detecting an oops the Linux kernel kills the offending process,
-prints information that can help debug the problem and continues execution
-but with limited reliability.
+prints information that can help debug the problem and continues execution but with limited reliability.
 
 Lets consider the following Linux kernel module:
 
-.. slide:: Oops module
-   :inline-contents: True
-   :level: 2
 
-   .. code-block:: c
-
+```c
       static noinline void do_oops(void)
       {
           *(int*)0x42 = 'a';
@@ -66,12 +49,12 @@ Lets consider the following Linux kernel module:
 
       module_init(so2_oops_init);
       module_exit(so2_oops_exit);
+```
 
-Notice that ''do_oops'' function tries to write at an invalid memory address. Because the kernel
-cannot find a suitable physical page were to write, it kills the insmod task in the context of
-which ''do_oops'' runs. Then it prints the following oops message:
+Notice that ''do_oops'' function tries to write at an invalid memory address. Because the kernel cannot find a suitable physical page were to write, it kills the insmod task in the context of which ''do_oops'' runs.
+Then it prints the following oops message:
 
-   .. code-block:: bash
+```bash
 
       root@qemux86:~/skels/debugging/oops# insmod oops.ko
       BUG: unable to handle kernel NULL pointer dereference at 00000042
@@ -111,15 +94,12 @@ which ''do_oops'' runs. Then it prints the following oops message:
       CR2: 0000000000000042
       ---[ end trace 011848be72f8bb42 ]---
       Killed
+```
 
-An oops contains information about the IP which caused the fault, register status, process,
-CPU on which the fault happend like below:
+An oops contains information about the IP which caused the fault, register status, process, CPU on which the fault happend like below:
 
-.. slide:: Oops information
-   :inline-contents: True
-   :level: 2
 
-   .. code-block:: bash
+```bash
 
       root@qemux86:~/skels/debugging/oops# insmod oops.ko
       BUG: unable to handle kernel NULL pointer dereference at 00000042
@@ -138,16 +118,11 @@ CPU on which the fault happend like below:
       DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 007b
       Code: <a3> 42 00 00 00 5d c3 90 55 89 e5 83 ec 04 c7 04 24 24 70 81 c8 e8
       Killed
+```
 
-Another important thing that an oops can provide is the stack trace of functions called before
-the fault happend:
+Another important thing that an oops can provide is the stack trace of functions called before the fault happend:
 
-.. slide:: Oops stacktrace
-   :inline-contents: True
-   :level: 2
-
-
-   .. code-block:: bash
+```bash
 
       root@qemux86:~/skels/debugging/oops# insmod oops.ko
       BUG: unable to handle kernel NULL pointer dereference at 00000042
@@ -166,50 +141,35 @@ the fault happend:
       do_int80_syscall_32+0x61/0x190
       entry_INT80_32+0x2f/0x2f
       Killed
+```
 
-Decoding an oops
-----------------
-
-.. slide:: Debugging
-   :inline-contents: True
-   :level: 2
+#### Decoding an oops
 
    * CONFIG_DEBUG_INFO
    * addr2line
    * gdb
    * objdump -dSr
 
-addr2line
----------
+#### addr2line
 
-*addr2line* translates addresses into file names and line numbers. Given
-an address in an executable it uses the debugging information to figure out
-which file name and line number are associated with it.
+*addr2line* translates addresses into file names and line numbers.
+Given an address in an executable it uses the debugging information to figure out which file name and line number are associated with it.
 
-Modules are loaded at dynamic addresses but are compiled starting with 0 as
-a base address. So, in order to find the line number for a given dynamic address
-we need to know module's load address.
+Modules are loaded at dynamic addresses but are compiled starting with 0 as a base address.
+So, in order to find the line number for a given dynamic address we need to know module's load address.
 
-.. slide:: addr2line
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: bash
+```bash
 
       $ addr2line -e oops.o  0x08
       $ skels/debugging/oops/oops.c:5
       $ # 0x08 is the offset of the offending instruction inside the oops.ko module
+````
 
-objdump
--------
+#### objdump
 
 Similar we can determine the offending line using objdump:
 
-.. slide:: objdump
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: bash
+```bash
 
       $ cat /proc/modules
       oops 20480 1 - Loading 0xc8816000 (O+)
@@ -223,15 +183,11 @@ Similar we can determine the offending line using objdump:
       c8816006:       89 e5                   mov    %esp,%ebp
       *(int*)0x42 = 'a';
       c8816008:       a3 42 00 00 00          mov    %eax,0x42
+```
 
-gdb
----
+#### gdb
 
-.. slide:: gdb
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: bash
+```bash
 
       $ gdb ./vmlinux
 
@@ -246,21 +202,16 @@ gdb
       9	}
       10
       11	static int so2_panic_init(void)
+```
 
-Kernel panic
-------------
+#### Kernel panic
 
-A kernel panic is a special type of oops where the kernel cannot continue execution. For example
-if the function do_oops from above was called in the interrupt context, the kernel wouldn't know how to kill
-and it will decide that it is better to crash the kernel and stop execution.
+A kernel panic is a special type of oops where the kernel cannot continue execution.
+For example if the function do_oops from above was called in the interrupt context, the kernel wouldn't know how to kill and it will decide that it is better to crash the kernel and stop execution.
 
 Here is a sample code that will generate a kernel panic:
 
-.. slide:: Kernel panic
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
+```c
 
       static struct timer_list panic_timer;
 
@@ -278,10 +229,11 @@ Here is a sample code that will generate a kernel panic:
 
           return 0;
       }
+```
 
 Loading the module will generate the following kernel panic message:
 
-.. code-block:: bash
+```bash
 
     root@qemux86:~/skels/debugging/panic# insmod panic.ko
     panic: loading out-of-tree module taints kernel.
@@ -334,19 +286,13 @@ Loading the module will generate the following kernel panic message:
     Kernel panic - not syncing: Fatal exception in interrupt
     Kernel Offset: disabled
     ---[ end Kernel panic - not syncing: Fatal exception in interrupt
+```
 
+### List debugging
 
-List debugging
-==============
+In order to catch access to uninitialized elements the kernel uses poison magic values.
 
-In order to catch access to uninitialized elements the kernel uses poison
-magic values.
-
-.. slide:: List debugging
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: bash
+```bash
 
       static inline void list_del(struct list_head *entry)
       {
@@ -357,53 +303,37 @@ magic values.
 
       BUG: unable to handle kernel NULL pointer dereference at 00000100
       IP: crush+0x80/0xb0 [list]
+```
 
-Memory debugging
-================
+### Memory debugging
 
 There are several tools for memory debugging:
-
-.. slide:: Memory debugging
-   :inline-contents: True
-   :level: 2
 
    * SLAB/SLUB debugging
    * KASAN
    * kmemcheck
    * DEBUG_PAGEALLOC
 
-Slab debugging
----------------
+#### Slab debugging
 
-Slab debugging uses a memory poison technique to detect several types of memory
-bugs in the SLAB/SUB allocators.
+Slab debugging uses a memory poison technique to detect several types of memory bugs in the SLAB/SUB allocators.
 
-The allocated buffers are guarded with memory that has been filled in with
-special markers. Any adjacent writes to the buffer will be detected at a later
-time when other memory management operations on that buffer are performed
-(e.g. when the buffer is freed).
+The allocated buffers are guarded with memory that has been filled in with special markers.
+Any adjacent writes to the buffer will be detected at a later time when other memory management operations on that buffer are performed (e.g. when the buffer is freed).
 
-Upon allocation of the buffer, the buffer it is also filled in with a special
-value to potentially detect buffer access before initialization (e.g. if the
-buffer holds pointers). The value is selected in such a way that it is unlikely
-to be a valid address and as such to trigger kernel bugs at the access time.
+Upon allocation of the buffer, the buffer it is also filled in with a special value to potentially detect buffer access before initialization (e.g. if the buffer holds pointers).
+The value is selected in such a way that it is unlikely to be a valid address and as such to trigger kernel bugs at the access time.
 
-A similar technique is used when freeing the buffer: the buffer is filled with
-another special value that will cause kernel bugs if pointers are accessed after
-the memory is freed. In this case, the allocator also checks the next time the
-buffer is allocated that the buffer was not modified.
+A similar technique is used when freeing the buffer: the buffer is filled with another special value that will cause kernel bugs if pointers are accessed after the memory is freed.
+In this case, the allocator also checks the next time the buffer is allocated that the buffer was not modified.
 
 The diagram bellow shows a summary of the way SLAB/SLUB poisoning works:
-
-
-.. slide:: Slab debugging
-   :inline-contents: True
-   :level: 2
 
    * CONFIG_DEBUG_SLAB
    * poisoned based memory debuggers
 
-   .. ditaa::
+![](images/Fig30-SlabDebugging.png)
+
         +--------------+-----------------------+--------------+
         |  cF88        |        c8F8           |  cF88        |
         |  Buffer      |    Allocated buffer   |  Buffer      |
@@ -423,11 +353,7 @@ The diagram bellow shows a summary of the way SLAB/SLUB poisoning works:
 
 Example of an use before initialize bug:
 
-.. slide:: Use before initialize bugs
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       BUG: unable to handle kernel paging request at 5a5a5a5a
       IP: [<c1225063>] __list_del_entry+0x37/0x71
@@ -441,8 +367,8 @@ Example of an use before initialize bug:
       [<f1de82d6>] ? crush_it+0xa9/0xa9 [crusher]
       [<c106b8ae>] sys_init_module+0xc8d/0xe77
       [<c14d7d18>] syscall_call+0x7/0xb
-
-   .. code-block:: c
+```
+```c
 
       noinline void use_before_init(void)
       {
@@ -451,14 +377,11 @@ Example of an use before initialize bug:
 	   printk("%s\n", __func__);
 	   list_del(&m->lh);
       }
+```
 
 Example of an use after free bug:
 
-.. slide:: Use after free bug
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       BUG: unable to handle kernel paging request at 6b6b6b6b
       IP: [<c1225063>] __list_del_entry+0x37/0x71
@@ -472,8 +395,8 @@ Example of an use after free bug:
       [<f4c682d6>] ? crush_it+0xa9/0xa9 [crusher]
       [<c106b8ae>] sys_init_module+0xc8d/0xe77
       [<c14d7d18>] syscall_call+0x7/0xb
-
-   .. code-block:: c
+```
+```c
 
       noinline void use_after_free(void)
       {
@@ -483,22 +406,19 @@ Example of an use after free bug:
 	  kfree(m);
 	  list_del(&m->lh);
       }
+```
 
-Another example of an use after free bug is shown below. Note that this time the
-bug is detected at the next allocation.
+Another example of an use after free bug is shown below.
+Note that this time the bug is detected at the next allocation.
 
-.. slide:: Use after free bug
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       # insmod /system/lib/modules/crusher.ko test=use_before_init
       Slab corruption: size-4096 start=ed612000, len=4096
       000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 6b 6b
-
-   .. code-block:: c
+```
+```c
 
       noinline void use_after_free2(void)
       {
@@ -508,14 +428,11 @@ bug is detected at the next allocation.
 	  b = kmalloc(3000, GFP_KERNEL);
 	  kfree(b);
       }
+```
 
 Finally this is an example of a buffer overflow bug:
 
-.. slide:: Buffer overflow bugs
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       slab error in verify_redzone_free(): cache `dummy': memory outside object was overwritten
       Pid: 1282, comm: insmod Not tainted 3.0.16-mid10-00007-ga4a6b62-dirty #70
@@ -530,8 +447,8 @@ Finally this is an example of a buffer overflow bug:
       [<c106b8ae>] sys_init_module+0xc8d/0xe77
       [<c14d7d18>] syscall_call+0x7/0xb
       eb002bf8: redzone 1:0xd84156c5635688c0, redzone 2:0x0
-
-   .. code-block:: c
+```
+```c
 
       noinline void buffer_overflow(void)
       {
@@ -542,44 +459,27 @@ Finally this is an example of a buffer overflow bug:
 	  memset(b, 0, 3016);
 	  kmem_cache_free(km, b);
       }
+```
 
-
-DEBUG_PAGEALLOC
----------------
-
-.. slide:: DEBUG_PAGEALLOC
-   :inline-contents: True
-   :level: 2
+#### DEBUG_PAGEALLOC
 
    * Memory debugger that works at a page level
    * Detects invalid accesses either by:
 
-     * Filling pages with poison byte patterns and checking the pattern at
-       reallocation
-     * Unmapping the dellocated pages from kernel space (just a few
-       architectures)
+     * Filling pages with poison byte patterns and checking the pattern at reallocation
+     * Unmapping the dellocated pages from kernel space (just a few architectures)
 
 
-KASan
------
+#### KASan
 
-KASan is a dynamic memory error detector designed to find use-after-free
-and out-of-bounds bugs.
+KASan is a dynamic memory error detector designed to find use-after-free and out-of-bounds bugs.
 
-The main idea of KASAN is to use shadow memory to record whether each byte
-of memory is safe to access or not, and use compiler's instrumentation to
-check the shadow memory on each memory access.
+The main idea of KASAN is to use shadow memory to record whether each byte of memory is safe to access or not, and use compiler's instrumentation to check the shadow memory on each memory access.
 
-Address sanitizer uses 1 byte of shadow memory to track 8 bytes of kernel
-address space. It uses 0-7 to encode the number of consecutive bytes at
-the beginning of the eigh-byte region that are valid.
+Address sanitizer uses 1 byte of shadow memory to track 8 bytes of kernel address space.
+It uses 0-7 to encode the number of consecutive bytes at the beginning of the eigh-byte region that are valid.
 
-See `The Kernel Address Sanitizer (KASAN)` for more information and have a look
-at lib/test_kasan.c for an example of problems that KASan can detect.
-
-.. slide:: KASan
-   :inline-contents: True
-   :level: 2
+See `The Kernel Address Sanitizer (KASAN)` for more information and have a look at lib/test_kasan.c for an example of problems that KASan can detect.
 
    * dynamic memory error detector
    * finds user-after-free or out-of-bound bugs
@@ -587,46 +487,25 @@ at lib/test_kasan.c for an example of problems that KASan can detect.
    * lib/test_kasan.c
 
 
-KASan vs DEBUG_PAGEALLOC
-~~~~~~~~~~~~~~~~~~~~~~~~
+##### KASan vs DEBUG_PAGEALLOC
 
-.. slide:: KASan vs DEBUG_PAGEALLOC
-   :inline-contents: True
-   :level: 2
-
-   KASan is slower than DEBUG_PAGEALLOC, but KASan works on sub-page granularity
-   level, so it able to find more bugs.
+   KASan is slower than DEBUG_PAGEALLOC, but KASan works on sub-page granularity level, so it able to find more bugs.
 
 
-KASan vs SLUB_DEBUG
-~~~~~~~~~~~~~~~~~~~
-
-.. slide:: KASan vs SLUB_DEBUG
-   :inline-contents: True
-   :level: 2
+##### KASan vs SLUB_DEBUG
 
    * SLUB_DEBUG has lower overhead than KASan.
-   * SLUB_DEBUG in most cases are not able to detect bad reads, KASan able to
-     detect both reads and writes.
-   * In some cases (e.g. redzone overwritten) SLUB_DEBUG detect bugs only on
-     allocation/freeing of object. KASan catch bugs right before it will happen,
-     so we always know exact place of first bad read/write.
+   * SLUB_DEBUG in most cases are not able to detect bad reads, KASan able to detect both reads and writes.
+   * In some cases (e.g. redzone overwritten) SLUB_DEBUG detect bugs only on allocation/freeing of object. KASan catch bugs right before it will happen, so we always know exact place of first bad read/write.
 
 
-Kmemleak
---------
+##### Kmemleak
 
-Kmemleak provides a way of detecting kernel memory leaks in a way similar to a
-tracing garbage collector. Since tracing pointers is not possible in C, kmemleak
-scans the kernel stacks as well as dynamically and statically kernel memory for
-pointers to allocated buffers. A buffer for which there is no pointer is
-considered as leaked. The basic steps to use kmemleak are presented bellow, for
-more information see `Kernel Memory Leak Detector`
+Kmemleak provides a way of detecting kernel memory leaks in a way similar to a tracing garbage collector.
+Since tracing pointers is not possible in C, kmemleak scans the kernel stacks as well as dynamically and statically kernel memory for pointers to allocated buffers.
+A buffer for which there is no pointer is considered as leaked.
+The basic steps to use kmemleak are presented bellow, for more information see `Kernel Memory Leak Detector`
 
-
-.. slide:: Kmemleak
-   :inline-contents: True
-   :level: 2
 
    * enable kernel config: `CONFIG_DEBUG_KMEMLEAK`
    * setup: `mount -t debugfs nodev /sys/kernel/debug`
@@ -636,11 +515,7 @@ more information see `Kernel Memory Leak Detector`
 
 As an example, lets look at the following simple module:
 
-.. slide:: Kmemleak example
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
+```c
 
       static int leak_init(void)
       {
@@ -653,15 +528,11 @@ As an example, lets look at the following simple module:
 
       MODULE_LICENSE("GPL v2");
       module_init(leak_init);
+```
 
-Loading the module and triggering a kmemleak scan will issue the
-following report:
+Loading the module and triggering a kmemleak scan will issue the following report:
 
-.. slide:: Kmemleak report
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       root@qemux86:~# insmod skels/debugging/leak/leak.ko
       leak: loading out-of-tree module taints kernel.
@@ -683,19 +554,17 @@ following report:
       [<(ptrval)>] load_module+0x201a/0x2590
       [<(ptrval)>] sys_init_module+0xfd/0x120
       [<(ptrval)>] do_int80_syscall_32+0x6a/0x1a0
+```
 
+---
 
-.. note:: Notice that we did not had to unload the module to detect the memory
-          leak since kmemleak detects that the allocated buffer is not
-          reachable anymore.
+##### Note
 
+Notice that we did not had to unload the module to detect the memory leak since kmemleak detects that the allocated buffer is not reachable anymore.
 
-Lockdep checker
-===============
+---
 
-.. slide:: Lockdep checker
-   :inline-contents: True
-   :level: 2
+#### Lockdep checker
 
    * CONFIG_DEBUG_LOCKDEP
    * Detects lock inversio, circular dependencies, incorrect usage of locks
@@ -706,11 +575,7 @@ Lockdep checker
 
 Lets take for example the following kernel module that runs two kernel threads:
 
-.. slide:: AB BA Deadlock Example
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
+```c
 
       static noinline int thread_a(void *unused)
       {
@@ -722,8 +587,8 @@ Lets take for example the following kernel module that runs two kernel threads:
 
 	return 0;
       }
-
-   .. code-block:: c
+```
+```c
 
       static noinline int thread_b(void *unused)
       {
@@ -735,16 +600,11 @@ Lets take for example the following kernel module that runs two kernel threads:
 
         return 0;
       }
+```
 
+Loading this module with lockdep checker active will produce the following kernel log:
 
-Loading this module with lockdep checker active will produce the following
-kernel log:
-
-.. slide:: AB BA Deadlock Report
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       thread_a acquired A
       thread_a acquired B
@@ -761,20 +621,13 @@ kernel log:
       (ptrval) (b){+.+.}, at: thread_b+0x27/0x90 [locking]
 
       which lock already depends on the new lock.
+```
 
+As you can see, although the deadlock condition did not trigger (because thread A did not complete execution before thread B started execution) the lockdep checker identified a potential deadlock scenario.
 
-As you can see, although the deadlock condition did not trigger (because thread
-A did not complete execution before thread B started execution) the lockdep
-checker identified a potential deadlock scenario.
+Lockdep checker will provide even more information to help determine what caused the deadlock, like the dependency chain:
 
-Lockdep checker will provide even more information to help determine what caused
-the deadlock, like the dependency chain:
-
-.. slide:: AB BA Deadlock Report (dependency chain)
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       the existing dependency chain (in reverse order) is:
 
@@ -792,14 +645,11 @@ the deadlock, like the dependency chain:
 	    thread_b+0x48/0x90 [locking]
 	    kthread+0xeb/0x100
 	    ret_from_fork+0x2e/0x38
+```
 
 and even an unsafe locking scenario:
 
-.. slide:: AB BA Deadlock Report (unsafe locking scenario)
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       other info that might help us debug this:
 
@@ -813,17 +663,12 @@ and even an unsafe locking scenario:
       lock(a);
 
       *** DEADLOCK ***
+```
 
+Another example of unsafe locking issues that lockdep checker detects is unsafe locking from interrupt context.
+Lets consider the following kernel module:
 
-Another example of unsafe locking issues that lockdep checker detects
-is unsafe locking from interrupt context. Lets consider the following
-kernel module:
-
-.. slide:: IRQ Deadlock Example
-   :inline-contents: True
-   :level: 2
-
-   .. code-block:: c
+```c
 
       static DEFINE_SPINLOCK(lock);
 
@@ -845,16 +690,11 @@ kernel module:
 	spin_unlock(&lock); pr_info("%s released lock\n", __func__);
 	return 0;
       }
+```
 
+As in the previous case, loading the module will trigger a lockdep warning:
 
-As in the previous case, loading the module will trigger a lockdep
-warning:
-
-.. slide:: IRQ Deadlock Report
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
       init_module acquiring lock
       init_module acquired lock
@@ -878,16 +718,11 @@ warning:
       sys_init_module+0xfd/0x120
       do_int80_syscall_32+0x6a/0x1a0
       restore_all+0x0/0x8d
+```
 
+The warning will also provide additional information and a potential unsafe locking scenario:
 
-The warning will also provide additional information and a potential unsafe
-locking scenario:
-
-.. slide:: IRQ Deadlock Report
-   :inline-contents: True
-   :level: 2
-
-   ::
+```
 
        Possible unsafe locking scenario:
 
@@ -912,26 +747,16 @@ locking scenario:
        lock_acquire+0x93/0x190
        _raw_spin_lock+0x39/0x50
        timerfn+0x25/0x60 [locking2]
+```
 
-
-perf
-====
-
-.. slide:: perf
-   :inline-contents: True
-   :level: 2
+#### perf
 
    * performance counters, tracepoints, kprobes, uprobes
    * hardware events: CPU cycles, TLB misses, cache misses
    * software events: page fauls , context switches
    * collects backtraces (user + kernel)
 
-Other tools
-===========
-
-.. slide:: Other tools
-   :inline-contents: True
-   :level: 2
+#### Other tools
 
    * ftrace
    * kprobes
@@ -940,3 +765,8 @@ Other tools
    * checkpatch.pl
    * printk
    * dump_stack()
+
+---
+
+* [目次](/README.md#目次index)
+* [対称型マルチプロセッシング](/smp.rst.md#対称型マルチプロセッシング)
