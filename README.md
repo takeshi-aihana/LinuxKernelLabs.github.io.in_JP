@@ -16,3 +16,5 @@ Japanese translation of [Linux Kernel Teaching](https://linux-kernel-labs.github
 
 * [対称型マルチプロセッシング](/smp.rst.md#対称型マルチプロセッシング)
 
+* [デバッグ](/debugging.rst.md#デバッグ)
+

@@ -3,29 +3,34 @@
 
 ---
 
-## Debugging
+## デバッグ
 
-### Lecture objectives:
+### この講義の目的
 
-One essential part of Linux kernel development is debugging. In user space we had the support of the kernel so we could easily stop processes and use gdb to inspect their behavior.
-In the kernel, in order to use gdb we need to use hypervisor like QEMU or JTAG based hardware interfaces which are not always available.
-The Linux kernel provides a set of tools and debug options useful for investigating abnormal behavior.
+Linux カーネル開発に不可欠なものの一つがデバッグです。
+ユーザ空間ではカーネルのサポートがあったので、簡単にプロセスを停止して ``gdb`` でプロセスの動きを詳しく調べることができました。
+カーネル空間の場合、``gdb`` を使うためには ``QEMU`` や ``JTAG`` 系のハードウェア・インタフェースなど、常に利用できるとは限らないハイパーバイザを使う必要があります。
+Linux カーネルは異常な挙動を調査するために役に立つ一連のツールやデバッグ・オプションを提供しています。
 
-In this lecture we will learn about:
+この講義では以下について学習します：
 
-   * decoding an oops/panic
-   * list debugging
-   * memory debugging
-   * locking debugging
-   * profiling
+   * [oops/panic の解読](/debugging.rst.md#oops/panic の解読)
 
-### Decoding an oops/panic
+   * [リストのデバッグ](/debugging.rst.md#リストのデバッグ)
+   
+   * [メモリのデバッグ](/debugging.rst.md#メモリのデバッグ)
+   
+   * [ロックのデバッグ](/debugging.rst.md#ロックのデバッグ)
+   
+   * [プロファイリング](/debugging.rst.md#profiling)
 
-An oops is an inconsistent state that the kernel detects inside itself.
-Upon detecting an oops the Linux kernel kills the offending process,
-prints information that can help debug the problem and continues execution but with limited reliability.
 
-Lets consider the following Linux kernel module:
+### oops/panic の解読
+
+``oops`` は「矛盾した」状態を意味し、カーネル自身が内部で検出するものです。
+``oops`` を検出すると、Linux カーネルは問題のあるプロセスを強制終了して、問題のデバッグに役立つ情報を出力し、実行を継続しますが、その挙動は保証したものでありません。
+
+次に示す Linux カーネル・モジュールについて考えてみることにしましょう：
 
 
 ```c
