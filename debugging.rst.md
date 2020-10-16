@@ -27,11 +27,10 @@ Linux カーネルは異常な挙動を調査するために役に立つ一連�
 
 ### oops/panic の解読
 
-``oops`` は「矛盾した」状態を意味し、カーネル自身が内部で検出するものです。
-``oops`` を検出すると、Linux カーネルは問題のあるプロセスを強制終了して、問題のデバッグに役立つ情報を出力し、実行を継続しますが、その挙動は保証したものでありません。
+``oops`` とはカーネル内部の「矛盾した」状態を意味し、カーネル自身が検出します。
+``oops`` を検出すると、Linux カーネルは問題のあるプロセスを強制終了して、問題のデバッグに役立つ情報を出力し、実行を継続しますが、その挙動は保証されたものでありません。
 
 次に示す Linux カーネル・モジュールについて考えてみることにしましょう：
-
 
 ```c
       static noinline void do_oops(void)
@@ -56,8 +55,9 @@ Linux カーネルは異常な挙動を調査するために役に立つ一連�
       module_exit(so2_oops_exit);
 ```
 
-Notice that ''do_oops'' function tries to write at an invalid memory address. Because the kernel cannot find a suitable physical page were to write, it kills the insmod task in the context of which ''do_oops'' runs.
-Then it prints the following oops message:
+``do_oops()`` 関数で無効なアドレスのメモリに書き込もうとしていることに注意して下さい。
+カーネルは正しく書き込める妥当な物理ページであるかどうかを見分けることはできないので、``do_oops()`` 関数を実行しているコンテキストで ``insmod`` の命令を強制終了します。
+それから、次のような oops メッセージを出力します：
 
 ```bash
 
@@ -101,7 +101,7 @@ Then it prints the following oops message:
       Killed
 ```
 
-An oops contains information about the IP which caused the fault, register status, process, CPU on which the fault happend like below:
+oops には、次に示すようにエラーを発生させた IP（命令）、レジスタの状態、プロセス、エラーが発生した時の CPU の情報が含まれています：
 
 
 ```bash
@@ -124,8 +124,7 @@ An oops contains information about the IP which caused the fault, register statu
       Code: <a3> 42 00 00 00 5d c3 90 55 89 e5 83 ec 04 c7 04 24 24 70 81 c8 e8
       Killed
 ```
-
-Another important thing that an oops can provide is the stack trace of functions called before the fault happend:
+oops が提供できるもう一つ重要な情報は、エラーが発生する前に呼び出されていた関数のスタック・トレースです：
 
 ```bash
 
@@ -148,26 +147,26 @@ Another important thing that an oops can provide is the stack trace of functions
       Killed
 ```
 
-#### Decoding an oops
+#### oops の解読
 
-   * CONFIG_DEBUG_INFO
-   * addr2line
-   * gdb
-   * objdump -dSr
+   * ``CONFIG_DEBUG_INFO``
+   * ``addr2line``
+   * ``gdb``
+   * ``objdump -dSr``
 
 #### addr2line
 
-*addr2line* translates addresses into file names and line numbers.
-Given an address in an executable it uses the debugging information to figure out which file name and line number are associated with it.
+*addr2line* はアドレスをファイル名とその行番号に変換してくれるコマンドです。
+実行可能なアドレスを引数として指定すると、このコマンドはデバッグ情報を利用してアドレスに関連付けられているファイル名と行番号を特定します。
 
-Modules are loaded at dynamic addresses but are compiled starting with 0 as a base address.
-So, in order to find the line number for a given dynamic address we need to know module's load address.
+カーネル・モジュールは実行時に決められたアドレスにロードされますが、これらはベース・アドレスが ``0 `` でコンパイルされたものです。
+そのため、ここで指定したアドレスに対する行番号を見つけるためには、実際にモジュールがロードされた時のアドレスを知る必要があります。
 
 ```bash
 
       $ addr2line -e oops.o  0x08
       $ skels/debugging/oops/oops.c:5
-      $ # 0x08 is the offset of the offending instruction inside the oops.ko module
+      $ # 引数の 0x08 は oops.ko モジュール内の問題が発生した命令のオフセットです
 ````
 
 #### objdump
