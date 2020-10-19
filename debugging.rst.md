@@ -28,7 +28,7 @@ Linux カーネルは異常な挙動を調査するために役に立つ一連�
 ### oops/panic の解読
 
 ``oops`` とはカーネル内部の「矛盾した」状態を意味し、カーネル自身が検出します。
-``oops`` を検出すると、Linux カーネルは問題のあるプロセスを強制終了して、問題のデバッグに役立つ情報を出力し、実行を継続しますが、その挙動は保証されたものでありません。
+``oops`` を検出すると、Linux カーネルは問題を引き起こしたプロセスを強制終了して、その問題のデバッグに役立つ情報を出力し、カーネルの実行を継続しますが、その挙動は保証されたものでありません。
 
 次に示す Linux カーネル・モジュールについて考えてみることにしましょう：
 
@@ -159,7 +159,7 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
 *addr2line* はアドレスをファイル名とその行番号に変換してくれるコマンドです。
 実行可能なアドレスを引数として指定すると、このコマンドはデバッグ情報を利用してアドレスに関連付けられているファイル名と行番号を特定します。
 
-カーネル・モジュールは実行時に決められたアドレスにロードされますが、これらはベース・アドレスが ``0 `` でコンパイルされたものです。
+多くのカーネル・モジュールは実行時に決められたアドレスにロードされますが、これらはベース・アドレスが ``0 `` でコンパイルされたものです。
 そのため、ここで指定したアドレスに対する行番号を見つけるためには、実際にモジュールがロードされた時のアドレスを知る必要があります。
 
 ```bash
@@ -171,7 +171,7 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
 
 #### objdump
 
-Similar we can determine the offending line using objdump:
+同様に、``objdump`` コマンドを使って問題を引き起こした行を特定することができます：
 
 ```bash
 
@@ -210,10 +210,10 @@ Similar we can determine the offending line using objdump:
 
 #### Kernel panic
 
-A kernel panic is a special type of oops where the kernel cannot continue execution.
-For example if the function do_oops from above was called in the interrupt context, the kernel wouldn't know how to kill and it will decide that it is better to crash the kernel and stop execution.
+カーネル Panic は oops の特殊なケースで、これ以上はカーネルが実行を継続できないことを意味します。
+たとえば、上記の ``do_oops()`` 関数が[割り込みコンテキスト](/interrupts.rst.md#割り込みコンテキスト)の中で呼び出された場合、カーネルはそれを強制終了する方法が分からないので、カーネルをクラッシュさせて実行を停止することが最善であると判断します。
 
-Here is a sample code that will generate a kernel panic:
+次はカーネル Panic を発生させるサンプルコードです：
 
 ```c
 
@@ -235,7 +235,7 @@ Here is a sample code that will generate a kernel panic:
       }
 ```
 
-Loading the module will generate the following kernel panic message:
+このカーネル・モジュールをロードすると、次に示すようなカーネル Panic のメッセージが出力されます：
 
 ```bash
 
