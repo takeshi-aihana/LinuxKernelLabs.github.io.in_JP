@@ -292,9 +292,9 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
     ---[ end Kernel panic - not syncing: Fatal exception in interrupt
 ```
 
-### List debugging
+### リスト型のデバッグ
 
-In order to catch access to uninitialized elements the kernel uses poison magic values.
+カーネルは、リストの中で初期化されていない要素へのアクセスを捕捉するために「ポイズン・マジック（*Poison Magic*）」値を使います。
 
 ```bash
 
@@ -309,53 +309,42 @@ In order to catch access to uninitialized elements the kernel uses poison magic 
       IP: crush+0x80/0xb0 [list]
 ```
 
-### Memory debugging
+### メモリのデバッグ
 
-There are several tools for memory debugging:
+メモリをデバッグする際に利用できるツールがいくつかあります：
 
-   * SLAB/SLUB debugging
+   * SLAB/SLUB 内のデバッグ
    * KASAN
    * kmemcheck
    * DEBUG_PAGEALLOC
 
-#### Slab debugging
+#### Slab のデバッグ
 
-Slab debugging uses a memory poison technique to detect several types of memory bugs in the SLAB/SUB allocators.
+Slab のデバッグでは「メモリ・ポイズン（*Memory Poison*）」なる手法を使って、SLAB または SUB アロケータ内にあるいろいろな種類のバグを検出します。
 
-The allocated buffers are guarded with memory that has been filled in with special markers.
-Any adjacent writes to the buffer will be detected at a later time when other memory management operations on that buffer are performed (e.g. when the buffer is freed).
+一般的にメモリの中に確保されたバッファは、特別なマーカーが格納されたメモリで保護されます。
+このバッファに隣接するメモリへの書き込みは、そのバッファに対するメモリ管理系の操作が行われたあと（例えば、このバッファのメモリが解放されたあと）に検出されます。
 
+メモリの中にバッファを確保する時は、もし初期化されていない（例えば、このバッファが複数のポインタを保持しているような場合）バッファにアクセスするとそれを検出できるようにするための特別な値が格納されます。
+その値は、妥当なアドレスにはならないような値であり、そしてバッファにアクセスしたらカーネルの BUG を「踏む」ような値が選択されます。
 Upon allocation of the buffer, the buffer it is also filled in with a special value to potentially detect buffer access before initialization (e.g. if the buffer holds pointers).
 The value is selected in such a way that it is unlikely to be a valid address and as such to trigger kernel bugs at the access time.
 
-A similar technique is used when freeing the buffer: the buffer is filled with another special value that will cause kernel bugs if pointers are accessed after the memory is freed.
-In this case, the allocator also checks the next time the buffer is allocated that the buffer was not modified.
+バッファを解放する時も同様の方法が使われます：
+バッファには、それを解放した後にポインタにアクセスした場合にカーネルの BUG を「踏む」ような別の特別な値が格納されます。
+この場合、次にバッファが確保された際にアロケータはバッファが変更されていないことも一緒にチェックします。
 
-The diagram bellow shows a summary of the way SLAB/SLUB poisoning works:
+次の図は SLAB または SLUB のポインズン化**[＊1]**がどのように機能するかの概要を示しています：
 
-   * CONFIG_DEBUG_SLAB
-   * poisoned based memory debuggers
+**[訳注＊1]** 本文の説明にある「メモリ・ポイズン」の手法が適用されていること。メモリの確保や解放時に特別な値を格納しておき BUG が発生したかどうかで問題を検出する仕組み。
+
+   * ``CONFIG_DEBUG_SLAB``
+   * 「メモリ・ポイズン」法を使ったメモリのデバッガ
 
 ![](images/Fig30-SlabDebugging.png)
 
-        +--------------+-----------------------+--------------+
-        |  cF88        |        c8F8           |  cF88        |
-        |  Buffer      |    Allocated buffer   |  Buffer      |
-	|  Underflow   |      0x5a5a5a5a       |  Overflow    |
-	|  Poison      |      0x5a5a5a5a       |  Poison      |
-        |              |      0x5a5a5a5a       |              |
-        +--------------+-----------------------+--------------+
 
-        +--------------+-----------------------+--------------+
-        |  cF88        |        c888           |  cF88        |
-        |  Buffer      |     Freed buffer      |  Buffer      |
-	|  Underflow   |      0x6b6b6b6b       |  Overflow    |
-	|  Poison      |      0x6b6b6b6b       |  Poison      |
-        |              |      0x6b6b6b6b       |              |
-        +--------------+-----------------------+--------------+
-
-
-Example of an use before initialize bug:
+次は、初期化前にアクセスした BUG の例です：
 
 ```
 
@@ -383,7 +372,7 @@ Example of an use before initialize bug:
       }
 ```
 
-Example of an use after free bug:
+こちらはメモリを解放したあとにアクセスした BUG の例です：
 
 ```
 
@@ -412,8 +401,8 @@ Example of an use after free bug:
       }
 ```
 
-Another example of an use after free bug is shown below.
-Note that this time the bug is detected at the next allocation.
+次は、メモリを解放したあとにアクセスした BUG の別の例です。
+今回は、次にメモリを確保した時に BUG が検出されている点に注意して下さい。
 
 ```
 
@@ -434,7 +423,7 @@ Note that this time the bug is detected at the next allocation.
       }
 ```
 
-Finally this is an example of a buffer overflow bug:
+最後は、バッファ・オーバーフローの BUG の例です：
 
 ```
 
