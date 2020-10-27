@@ -426,7 +426,6 @@ The value is selected in such a way that it is unlikely to be a valid address an
 最後は、バッファ・オーバーフローの BUG の例です：
 
 ```
-
       slab error in verify_redzone_free(): cache `dummy': memory outside object was overwritten
       Pid: 1282, comm: insmod Not tainted 3.0.16-mid10-00007-ga4a6b62-dirty #70
       Call Trace:
@@ -456,28 +455,30 @@ The value is selected in such a way that it is unlikely to be a valid address an
 
 #### DEBUG_PAGEALLOC
 
-   * Memory debugger that works at a page level
-   * Detects invalid accesses either by:
+   * 「ページ」のレベルで動作するメモリのデバッガ
+   * 次のいずれかの方法で無効なアクセスを検出する：
 
-     * Filling pages with poison byte patterns and checking the pattern at reallocation
-     * Unmapping the dellocated pages from kernel space (just a few architectures)
+     * 複数のページを「ポイズン・バイト」のパタン **[＊2]** で埋めておき、ページの再割当て時にそのパタンをチェックする
+     * カーネル空間から割り当てが解除されたページをアンマップする（いくつかのアーキテクチャのみ）
+
+**[訳注＊2]** 前述の「メモリ・ポイズン」の手法を適用し、バイト単位のデータをいくつか組み合わせて一つのパタンとする。
 
 
 #### KASan
 
-KASan is a dynamic memory error detector designed to find use-after-free and out-of-bounds bugs.
+**KASan**（*Kernel Address Sanitizer*）とは「メモリを解放後に使う（*use-after-free*）」 や「メモリの境界を越える（*out-of-bounds*）」といったバグを検出するために設計されたランタイムのメモリ・エラー検出機能です。
 
-The main idea of KASAN is to use shadow memory to record whether each byte of memory is safe to access or not, and use compiler's instrumentation to check the shadow memory on each memory access.
+KASan の主な考えはシャドウ・メモリを使って、メモリを構成するバイト毎に安全にアクセスできるかどうかを記録し、コンパイラが提供する特殊な機能を使いメモリ・アクセスが発生する度にシャドウ・メモリをチェックすることです。
 
-Address sanitizer uses 1 byte of shadow memory to track 8 bytes of kernel address space.
-It uses 0-7 to encode the number of consecutive bytes at the beginning of the eigh-byte region that are valid.
+Address Sanitizer は 1バイトのシャドウ・メモリを使ってカーネルのアドレス空間にある 8バイトのメモリを追跡します。
+有効な 8バイト領域の先頭にある連続したバイト数をエンコードするために 0〜7 の数値を使っています。
 
-See `The Kernel Address Sanitizer (KASAN)` for more information and have a look at lib/test_kasan.c for an example of problems that KASan can detect.
+詳細にについては [The Kernel Address Sanitizer (KASAN)]（日本語訳）(https://sites.google.com/site/kandamotohiro/linux/kasan-txt)を参照し、KASan が検出出来る問題の例については ``lib/test_kasan.c`` をご覧ください。
 
-   * dynamic memory error detector
-   * finds user-after-free or out-of-bound bugs
-   * uses shadow memory to track memory operations
-   * lib/test_kasan.c
+   * ランタイムにおけるメモリ・エラーの検出
+   * 「メモリを解放後に使う」や「メモリの境界を越える」といったバグを見つける
+   * シャドウ・メモリを利用してメモリへのアクセスを監視する
+   * サンプル・コードは ``lib/test_kasan.c`` 
 
 
 ##### KASan vs DEBUG_PAGEALLOC
