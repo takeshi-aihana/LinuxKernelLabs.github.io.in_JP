@@ -473,7 +473,7 @@ KASan の主な考えはシャドウ・メモリを使って、メモリを構�
 Address Sanitizer は 1バイトのシャドウ・メモリを使ってカーネルのアドレス空間にある 8バイトのメモリを追跡します。
 有効な 8バイト領域の先頭にある連続したバイト数をエンコードするために 0〜7 の数値を使っています。
 
-詳細にについては [The Kernel Address Sanitizer (KASAN)]（日本語訳）(https://sites.google.com/site/kandamotohiro/linux/kasan-txt)を参照し、KASan が検出出来る問題の例については ``lib/test_kasan.c`` をご覧ください。
+詳細にについては [The Kernel Address Sanitizer (KASAN)](https://sites.google.com/site/kandamotohiro/linux/kasan-txt) （日本語訳）を参照し、KASan が検出出来る問題の例については ``lib/test_kasan.c`` をご覧ください。
 
    * ランタイムにおけるメモリ・エラーの検出
    * 「メモリを解放後に使う」や「メモリの境界を越える」といったバグを見つける
