@@ -5,6 +5,7 @@
 
 ## デバッグ
 
+
 ### この講義の目的
 
 Linux カーネル開発に不可欠なものの一つがデバッグです。
@@ -147,12 +148,14 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
       Killed
 ```
 
+
 #### oops の解読
 
    * ``CONFIG_DEBUG_INFO``
    * ``addr2line``
    * ``gdb``
    * ``objdump -dSr``
+
 
 #### addr2line
 
@@ -168,6 +171,7 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
       $ skels/debugging/oops/oops.c:5
       $ # 引数の 0x08 は oops.ko モジュール内の問題が発生した命令のオフセットです
 ````
+
 
 #### objdump
 
@@ -189,6 +193,7 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
       c8816008:       a3 42 00 00 00          mov    %eax,0x42
 ```
 
+
 #### gdb
 
 ```bash
@@ -207,6 +212,7 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
       10
       11	static int so2_panic_init(void)
 ```
+
 
 #### Kernel panic
 
@@ -292,6 +298,7 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
     ---[ end Kernel panic - not syncing: Fatal exception in interrupt
 ```
 
+
 ### リスト型のデバッグ
 
 カーネルは、リストの中で初期化されていない要素へのアクセスを捕捉するために「ポイズン・マジック（*Poison Magic*）」値を使います。
@@ -309,6 +316,7 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
       IP: crush+0x80/0xb0 [list]
 ```
 
+
 ### メモリのデバッグ
 
 メモリをデバッグする際に利用できるツールがいくつかあります：
@@ -317,6 +325,7 @@ oops が提供できるもう一つ重要な情報は、エラーが発生する
    * KASAN
    * kmemcheck
    * DEBUG_PAGEALLOC
+
 
 #### Slab のデバッグ
 
@@ -453,6 +462,7 @@ The value is selected in such a way that it is unlikely to be a valid address an
       }
 ```
 
+
 #### DEBUG_PAGEALLOC
 
    * 「ページ」のレベルで動作するメモリのデバッガ
@@ -473,7 +483,7 @@ KASan の主な考えはシャドウ・メモリを使って、メモリを構�
 Address Sanitizer は 1バイトのシャドウ・メモリを使ってカーネルのアドレス空間にある 8バイトのメモリを追跡します。
 有効な 8バイト領域の先頭にある連続したバイト数をエンコードするために 0〜7 の数値を使っています。
 
-詳細にについては [The Kernel Address Sanitizer (KASAN)](https://sites.google.com/site/kandamotohiro/linux/kasan-txt) （日本語訳）を参照し、KASan が検出出来る問題の例については ``lib/test_kasan.c`` をご覧ください。
+詳細にについては [The Kernel Address Sanitizer (KASAN)](https://sites.google.com/site/kandamotohiro/linux/kasan-txt) （日本語訳）を参照し、KASan が検出できる問題の例については [``lib/test_kasan.c``](https://elixir.bootlin.com/linux/latest/source/lib/test_kasan.c) をご覧ください。
 
    * ランタイムにおけるメモリ・エラーの検出
    * 「メモリを解放後に使う」や「メモリの境界を越える」といったバグを見つける
@@ -483,14 +493,16 @@ Address Sanitizer は 1バイトのシャドウ・メモリを使ってカーネ
 
 ##### KASan vs DEBUG_PAGEALLOC
 
-   KASan is slower than DEBUG_PAGEALLOC, but KASan works on sub-page granularity level, so it able to find more bugs.
+KASan は DEBUG_PAGEALLOC よりも低速ですが、KASan はサブ・ページ単位の粒度で動作するのでより多くのバグを見つけることが可能です。
 
 
 ##### KASan vs SLUB_DEBUG
 
-   * SLUB_DEBUG has lower overhead than KASan.
-   * SLUB_DEBUG in most cases are not able to detect bad reads, KASan able to detect both reads and writes.
-   * In some cases (e.g. redzone overwritten) SLUB_DEBUG detect bugs only on allocation/freeing of object. KASan catch bugs right before it will happen, so we always know exact place of first bad read/write.
+   * SLUB_DEBUG は KASan よりもオーバーヘッド**[＊3]**が小さい
+   * SLUB_DEBUG はほとんどの場合、不正な読み込みを検出することはできず、KASan は不正な読み込みと書き込みの両方を検出することができる
+   * 場合によって（例えば、redzone が上書きされるケースなど）は、SLUB_DEBUG はオブジェクトを確保した時、またはオブジェクトを解放した時にしか検出できないが、KASan は BUG が発生する直前にそれを捕捉するので、最初の不正な読み込みまたは書き込みを行った正確な場所を常に把握できる
+
+**[訳注＊3]** ある処理を実行する時、その処理以外に必要となるコスト（処理時間やメモリ消費量など）のこと。
 
 
 ##### Kmemleak
