@@ -483,7 +483,7 @@ KASan の主な考えはシャドウ・メモリを使って、メモリを構�
 Address Sanitizer は 1バイトのシャドウ・メモリを使ってカーネルのアドレス空間にある 8バイトのメモリを追跡します。
 有効な 8バイト領域の先頭にある連続したバイト数をエンコードするために 0〜7 の数値を使っています。
 
-詳細にについては [The Kernel Address Sanitizer (KASAN)](https://sites.google.com/site/kandamotohiro/linux/kasan-txt) （日本語訳）を参照し、KASan が検出できる問題の例については [``lib/test_kasan.c``](https://elixir.bootlin.com/linux/latest/source/lib/test_kasan.c) をご覧ください。
+詳細にについては [The Kernel Address Sanitizer (KASAN)](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html) を参照し、KASan が検出できる問題の例については [``lib/test_kasan.c``](https://elixir.bootlin.com/linux/latest/source/lib/test_kasan.c) をご覧ください。
 
    * ランタイムにおけるメモリ・エラーの検出
    * 「メモリを解放後に使う」や「メモリの境界を越える」といったバグを見つける
@@ -498,7 +498,7 @@ KASan は DEBUG_PAGEALLOC よりも低速ですが、KASan はサブ・ページ
 
 ##### KASan vs SLUB_DEBUG
 
-   * SLUB_DEBUG は KASan よりもオーバーヘッド**[＊3]**が小さい
+   * SLUB_DEBUG は KASan よりもオーバーヘッド **[＊3]** が小さい
    * SLUB_DEBUG はほとんどの場合、不正な読み込みを検出することはできず、KASan は不正な読み込みと書き込みの両方を検出することができる
    * 場合によって（例えば、redzone が上書きされるケースなど）は、SLUB_DEBUG はオブジェクトを確保した時、またはオブジェクトを解放した時にしか検出できないが、KASan は BUG が発生する直前にそれを捕捉するので、最初の不正な読み込みまたは書き込みを行った正確な場所を常に把握できる
 
@@ -507,19 +507,18 @@ KASan は DEBUG_PAGEALLOC よりも低速ですが、KASan はサブ・ページ
 
 ##### Kmemleak
 
-Kmemleak provides a way of detecting kernel memory leaks in a way similar to a tracing garbage collector.
-Since tracing pointers is not possible in C, kmemleak scans the kernel stacks as well as dynamically and statically kernel memory for pointers to allocated buffers.
-A buffer for which there is no pointer is considered as leaked.
-The basic steps to use kmemleak are presented bellow, for more information see `Kernel Memory Leak Detector`
+**Kmemleak** はガーベッジ・コレクターを追跡するのと同様の方法でカーネルのメモリ・リークを検出する手段を提供しています。
+Ｃ言語でポインタの追跡はできないので、Kmemleak はカーネルのスタックに加え、確保されているバッファを指すポインタのカーネル・メモリに対して動的および静的にスキャンを実施します。
+ポインタがないバッファはメモリがリークしているとみなされます。
+Kmemleak を使うための基本的な手順は次のとおりです。詳細については [Kernel Memory Leak Detector](https://www.kernel.org/doc/html/latest/dev-tools/kmemleak.html)を参照して下さい。
 
+   * カーネル config を有効にする: `CONFIG_DEBUG_KMEMLEAK`
+   * セットアップする: `mount -t debugfs nodev /sys/kernel/debug`
+   * メモリのスキャンを開始する: `echo scan > /sys/kernel/debug/kmemleak`
+   * メモリ・リークを表示する: `cat /sys/kernel/debug/kmemleak`
+   * メモリ・リークの可能性がある領域を全てクリアする: `echo clear > /sys/kernel/debug/kmemleak`
 
-   * enable kernel config: `CONFIG_DEBUG_KMEMLEAK`
-   * setup: `mount -t debugfs nodev /sys/kernel/debug`
-   * trigger a memory scan: `echo scan > /sys/kernel/debug/kmemleak`
-   * show memory leaks: `cat /sys/kernel/debug/kmemleak`
-   * clear all possible leaks: `echo clear > /sys/kernel/debug/kmemleak`
-
-As an example, lets look at the following simple module:
+一つの例として、次に示す小さなカーネル・モジュールを見てみることにしましょう：
 
 ```c
 
