@@ -376,8 +376,8 @@ The value is selected in such a way that it is unlikely to be a valid address an
       {
            struct list_m *m = kmalloc(sizeof(*m), GFP_KERNEL);
 
-	   printk("%s\n", __func__);
-	   list_del(&m->lh);
+	       printk("%s\n", __func__);
+	       list_del(&m->lh);
       }
 ```
 
@@ -405,8 +405,8 @@ The value is selected in such a way that it is unlikely to be a valid address an
           struct list_m *m = kmalloc(sizeof(*m), GFP_KERNEL);
 
           printk("%s\n", __func__);
-	  kfree(m);
-	  list_del(&m->lh);
+	      kfree(m);
+	      list_del(&m->lh);
       }
 ```
 
@@ -426,9 +426,9 @@ The value is selected in such a way that it is unlikely to be a valid address an
       {
           char *b = kmalloc(3000, GFP_KERNEL);
           kfree(b);
-	  memset(b, 0, 30);
-	  b = kmalloc(3000, GFP_KERNEL);
-	  kfree(b);
+	      memset(b, 0, 30);
+	      b = kmalloc(3000, GFP_KERNEL);
+	      kfree(b);
       }
 ```
 
@@ -456,9 +456,9 @@ The value is selected in such a way that it is unlikely to be a valid address an
           struct kmem_cache *km = kmem_cache_create("dummy", 3000, 0, 0, NULL);
           char *b = kmem_cache_alloc(km, GFP_KERNEL);
 
-	  printk("%s\n", __func__);
-	  memset(b, 0, 3016);
-	  kmem_cache_free(km, b);
+	      printk("%s\n", __func__);
+     	  memset(b, 0, 3016);
+	      kmem_cache_free(km, b);
       }
 ```
 
@@ -505,12 +505,12 @@ KASan は DEBUG_PAGEALLOC よりも低速ですが、KASan はサブ・ページ
 **[訳注＊3]** ある処理を実行する時、その処理以外に必要となるコスト（処理時間やメモリ消費量など）のこと。
 
 
-##### Kmemleak
+#### Kmemleak
 
 **Kmemleak** はガーベッジ・コレクターを追跡するのと同様の方法でカーネルのメモリ・リークを検出する手段を提供しています。
 Ｃ言語でポインタの追跡はできないので、Kmemleak はカーネルのスタックに加え、確保されているバッファを指すポインタのカーネル・メモリに対して動的および静的にスキャンを実施します。
 ポインタがないバッファはメモリがリークしているとみなされます。
-Kmemleak を使うための基本的な手順は次のとおりです。詳細については [Kernel Memory Leak Detector](https://www.kernel.org/doc/html/latest/dev-tools/kmemleak.html)を参照して下さい。
+Kmemleak を使うための基本的な手順は次のとおりです。詳細については [Kernel Memory Leak Detector](https://www.kernel.org/doc/html/latest/dev-tools/kmemleak.html) を参照して下さい。
 
    * カーネル config を有効にする: `CONFIG_DEBUG_KMEMLEAK`
    * セットアップする: `mount -t debugfs nodev /sys/kernel/debug`
@@ -524,18 +524,19 @@ Kmemleak を使うための基本的な手順は次のとおりです。詳細�
 
       static int leak_init(void)
       {
-	  pr_info("%s\n", __func__);
+	      pr_info("%s\n", __func__);
 
-	  (void)kmalloc(16, GFP_KERNEL);
+	      (void)kmalloc(16, GFP_KERNEL);
 
-	  return 0;
+	      return 0;
       }
 
       MODULE_LICENSE("GPL v2");
       module_init(leak_init);
 ```
 
-Loading the module and triggering a kmemleak scan will issue the following report:
+このモジュールをロードして Kmemleak のスキャンを開始すると、次のような報告が出力されます：
+
 
 ```
 
@@ -565,49 +566,47 @@ Loading the module and triggering a kmemleak scan will issue the following repor
 
 ##### Note
 
-Notice that we did not had to unload the module to detect the memory leak since kmemleak detects that the allocated buffer is not reachable anymore.
+この例では、モージュルが確保したバッファにアクセスできないことを Kmemleak が検出するので、メモリ・リークを検出するためにモジュールをアンロードする必要がなかったことに注意して下さい。
 
 ---
 
-#### Lockdep checker
+#### Lockdep チェッカ
 
-   * CONFIG_DEBUG_LOCKDEP
-   * Detects lock inversio, circular dependencies, incorrect usage of locks
-     (including interrupt context)
-   * Maintains dependency between classes of locks not individual locks
-   * Each scenario is only checked once and hashed
+   * ``CONFIG_DEBUG_LOCKDEP``
+   * ロックの反転、ループしている依存関係、ロックの誤った使い方を検出する（割り込みコンテキストも含む）
+   * ロック単位ではなくロックのクラスの間での依存関係を維持する
+   * 各シナリオは一度だけチェックされてハッシュされる
 
-
-Lets take for example the following kernel module that runs two kernel threads:
+例えば、二つのカーネル・スレッドを実行するカーネル・モジュールを見てみることにしましょう：
 
 ```c
 
       static noinline int thread_a(void *unused)
       {
-	mutex_lock(&a); pr_info("%s acquired A\n", __func__);
-	mutex_lock(&b);	pr_info("%s acquired B\n", __func__);
+     	  mutex_lock(&a); pr_info("%s acquired A\n", __func__);
+	      mutex_lock(&b); pr_info("%s acquired B\n", __func__);
 
-	mutex_unlock(&b);
-	mutex_unlock(&a);
+	      mutex_unlock(&b);
+	      mutex_unlock(&a);
 
-	return 0;
+          return 0;
       }
 ```
 ```c
 
       static noinline int thread_b(void *unused)
       {
-	mutex_lock(&b); pr_info("%s acquired B\n", __func__);
-	mutex_lock(&a); pr_info("%s acquired A\n", __func__);
+	      mutex_lock(&b); pr_info("%s acquired B\n", __func__);
+	      mutex_lock(&a); pr_info("%s acquired A\n", __func__);
 
-	mutex_unlock(&a);
-	mutex_unlock(&b);
+          mutex_unlock(&a);
+	      mutex_unlock(&b);
 
-        return 0;
+          return 0;
       }
 ```
 
-Loading this module with lockdep checker active will produce the following kernel log:
+Lockdep チェッカを有効にして、このモジュールをロードすると次のようなカーネル・ログが出力されます：
 
 ```
 
@@ -628,9 +627,9 @@ Loading this module with lockdep checker active will produce the following kerne
       which lock already depends on the new lock.
 ```
 
-As you can see, although the deadlock condition did not trigger (because thread A did not complete execution before thread B started execution) the lockdep checker identified a potential deadlock scenario.
+ご覧の通り、（スレッドBが実行を開始する前にスレッドAの処理が完了しなかったので）デッドロックの状態には至りませんでしたが、Lockdep チェッカは潜在的なデッドロックのシナリオを特定しました。
 
-Lockdep checker will provide even more information to help determine what caused the deadlock, like the dependency chain:
+Lockdep チェッカは、ロックの依存関係が連鎖（*dependency chain*）していくといったデッドロックの原因を特定するのに役に立つさらに多くの情報を提供してくれます：
 
 ```
 
@@ -652,7 +651,7 @@ Lockdep checker will provide even more information to help determine what caused
 	    ret_from_fork+0x2e/0x38
 ```
 
-and even an unsafe locking scenario:
+そして、安全ではないロックのシナリオも：
 
 ```
 
@@ -664,14 +663,14 @@ and even an unsafe locking scenario:
       ----                    ----
       lock(b);
                               lock(a);
-	                      lock(b);
+	                          lock(b);
       lock(a);
 
       *** DEADLOCK ***
 ```
 
-Another example of unsafe locking issues that lockdep checker detects is unsafe locking from interrupt context.
-Lets consider the following kernel module:
+Lockdep チェッカがチェックする安全ではないロックのもう一つの例として、割り込みコンテキストからの危険なロックがあります。
+次に示すカーネル・モジュールについて考えてみることにしましょう：
 
 ```c
 
@@ -679,25 +678,25 @@ Lets consider the following kernel module:
 
       static void timerfn(struct timer_list *unused)
       {
-	pr_info("%s acquiring lock\n", __func__);
-	spin_lock(&lock);   pr_info("%s acquired lock\n", __func__);
-	spin_unlock(&lock); pr_info("%s released lock\n", __func__);
+	      pr_info("%s acquiring lock\n", __func__);
+	      spin_lock(&lock);   pr_info("%s acquired lock\n", __func__);
+	      spin_unlock(&lock); pr_info("%s released lock\n", __func__);
       }
 
       static DEFINE_TIMER(timer, timerfn);
 
       int init_module(void)
       {
-	mod_timer(&timer, jiffies);
+	      mod_timer(&timer, jiffies);
 
-	pr_info("%s acquiring lock\n", __func__);
-	spin_lock(&lock);   pr_info("%s acquired lock\n", __func__);
-	spin_unlock(&lock); pr_info("%s released lock\n", __func__);
-	return 0;
+	      pr_info("%s acquiring lock\n", __func__);
+	      spin_lock(&lock);   pr_info("%s acquired lock\n", __func__);
+	      spin_unlock(&lock); pr_info("%s released lock\n", __func__);
+          return 0;
       }
 ```
 
-As in the previous case, loading the module will trigger a lockdep warning:
+前の例と同様にモジュールをロードすると Lockdep チェッカから警告されます：
 
 ```
 
@@ -725,10 +724,9 @@ As in the previous case, loading the module will trigger a lockdep warning:
       restore_all+0x0/0x8d
 ```
 
-The warning will also provide additional information and a potential unsafe locking scenario:
+この警告は、さらに追加情報と潜在的に安全ではないロックのシナリオも教えてくれます：
 
 ```
-
        Possible unsafe locking scenario:
 
               CPU0
