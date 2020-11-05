@@ -759,7 +759,7 @@ Lockdep チェッカがチェックする安全ではないロックのもう一
    * いろいろなソフトウェアのイベント：ページ・フォルトの回数、コンテキスト・スイッチの回数
    * いろいろなバックトレースの収集（ユーザ空間とカーネル空間）
 
-#### Other tools
+#### その他のツール
 
    * [ftrace](https://github.com/torvalds/linux/blob/v4.15/Documentation/trace/ftrace.txt)
    * [kprobes](https://github.com/torvalds/linux/tree/v4.15/samples/kprobes)
