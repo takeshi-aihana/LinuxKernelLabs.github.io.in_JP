@@ -21,9 +21,9 @@ Linux カーネルは異常な挙動を調査するために役に立つ一連�
    
    * [メモリのデバッグ](/debugging.rst.md#メモリのデバッグ)
    
-   * [ロックのデバッグ](/debugging.rst.md#ロックのデバッグ)
+   * [ロックのデバッグ](/debugging.rst.md#Lockdepチェッカ)
    
-   * [プロファイリング](/debugging.rst.md#profiling)
+   * [プロファイリング](/debugging.rst.md#perf)
 
 
 ### oops/panic の解読
@@ -570,7 +570,7 @@ Kmemleak を使うための基本的な手順は次のとおりです。詳細�
 
 ---
 
-#### Lockdep チェッカ
+#### Lockdepチェッカ
 
    * ``CONFIG_DEBUG_LOCKDEP``
    * ロックの反転、ループしている依存関係、ロックの誤った使い方を検出する（割り込みコンテキストも含む）
