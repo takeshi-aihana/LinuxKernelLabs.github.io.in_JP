@@ -574,8 +574,8 @@ Kmemleak を使うための基本的な手順は次のとおりです。詳細�
 
    * ``CONFIG_DEBUG_LOCKDEP``
    * ロックの反転、ループしている依存関係、ロックの誤った使い方を検出する（割り込みコンテキストも含む）
-   * ロック単位ではなくロックのクラスの間での依存関係を維持する
-   * 各シナリオは一度だけチェックされてハッシュされる
+   * ロック単位ではなくロックのクラスの間の依存関係をみる
+   * 問題が発生した経緯（シナリオ）はそれぞれ一度だけチェックされてハッシュされる
 
 例えば、二つのカーネル・スレッドを実行するカーネル・モジュールを見てみることにしましょう：
 
@@ -754,20 +754,20 @@ Lockdep チェッカがチェックする安全ではないロックのもう一
 
 #### perf
 
-   * performance counters, tracepoints, kprobes, uprobes
-   * hardware events: CPU cycles, TLB misses, cache misses
-   * software events: page fauls , context switches
-   * collects backtraces (user + kernel)
+   * いろいろなパフォーマンス・カウンタ、トレースポイント、kprobes、uprobes
+   * いろいろなハードウェアのイベント： CPU のサイクル数、TLB ミスの回数、キャッシュ・ミスの回数
+   * いろいろなソフトウェアのイベント：ページ・フォルトの回数、コンテキスト・スイッチの回数
+   * いろいろなバックトレースの収集（ユーザ空間とカーネル空間）
 
 #### Other tools
 
-   * ftrace
-   * kprobes
-   * sparse
-   * coccinelle
-   * checkpatch.pl
+   * [ftrace](https://github.com/torvalds/linux/blob/v4.15/Documentation/trace/ftrace.txt)
+   * [kprobes](https://github.com/torvalds/linux/tree/v4.15/samples/kprobes)
+   * [sparse](https://www.kernel.org/doc/html/v4.12/dev-tools/sparse.html)
+   * [coccinelle](https://www.kernel.org/doc/html/v4.12/dev-tools/coccinelle.html)
+   * [checkpatch.pl](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/scripts/checkpatch.pl)
    * printk
-   * dump_stack()
+   * [dump_stack()](http://embeddedguruji.blogspot.com/2019/05/linux-device-driver-example-for.html)
 
 ---
 
