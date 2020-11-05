@@ -17,7 +17,7 @@ Linux カーネルは異常な挙動を調査するために役に立つ一連�
 
    * [oops/panic の解読](/debugging.rst.md#oopspanic-の解読)
 
-   * [リストのデバッグ](/debugging.rst.md#リストのデバッグ)
+   * [リストのデバッグ](/debugging.rst.md#リスト型のデバッグ)
    
    * [メモリのデバッグ](/debugging.rst.md#メモリのデバッグ)
    
