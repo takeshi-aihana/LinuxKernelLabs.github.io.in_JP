@@ -3,21 +3,17 @@
 
 ---
 
-## Infrastructure
+## 学習の基本
 
-In order to facilitate learning each topic has a hands-on exercises
-section which will contain in-depth, incremental clues on how to solve
-one or multiple tasks. To focus on a particular issue most of the
-tasks will be performed on existing skeleton drivers. Each skeleton
-driver has clearly marked sections that needs to be filled in order to
-complete the tasks.
+各章の学習を円滑に進めるために実践的な演習を用意しています。これらには一つまたは複数の課題を解決する方法について詳細で段階的なヒントが含まれています。
+特定の問題に焦点をあてるため、ほとんどの課題は既存の「スケルトン」ドライバ上で実行することになります。
+それぞれのスケルトン・ドライバは課題を終了するために入力する必要のあるセクションが明示されています。
+Each skeleton driver has clearly marked sections that needs to be filled in order to complete the tasks.
 
-The skeleton drivers are generated from full source examples located
-in tools/labs/templates. To solve tasks you start by generating the
-skeleton drivers, running the **skels** target in *tools/labs*. To
-keep the workspace clean it is recommended to generate the skeletons
-for one lab only and clean the workspace before start working on a new
-lab. Labs can be selected by using the **LABS** variable:
+これらのスケルトン・ドライバは *tools/labs/templates* ディレクトリの中にあるソースコードから生成します。
+課題を解決するためにスケルトン・ドライバのビルドから始めて、*tools/labs* の中にある **skels** を実行します。
+ワークスペースをゴチャゴチャさせないようにするために一つの演習のスケルトンだけをビルドし、新しい演習を始める前にワークスペースをきれいすることを推奨します。
+**LABS** という変数を使って演習を選択できるようになっています：
 
 ```bash
 
@@ -27,10 +23,10 @@ lab. Labs can be selected by using the **LABS** variable:
    tools/labs $ ls skels/kernel_modules/
    1-2-test-mod  3-error-mod  4-multi-mod  5-oops-mod  6-cmd-mod  \
    7-list-proc  8-kprobes  9-kdb
-   ```
+
+```
    
-You can also use the same variable to generate skeletons for specific
-tasks:
+You can also use the same variable to generate skeletons for specific tasks:
 
 ```shell
 
@@ -40,14 +36,12 @@ tasks:
    6-cmd-mod  8-kprobes
 ```
 
-For each task you may have multiple steps to perform, usually
-incremental. These steps are marked in the source code as well as in
-the lab exercises with the keyword *TODO*. If we have multiple steps
-to perform they will be prefixed by a number, like *TODO1*, *TODO2*,
-etc. If no number is used it is assumed to be the one and only
-step. If you want to resume a task from a certain step, you can using
-the **TODO** variable. The following example will generate the
-skeleton with the first *TODO* step resolved:
+For each task you may have multiple steps to perform, usually incremental.
+These steps are marked in the source code as well as in the lab exercises with the keyword *TODO*.
+If we have multiple steps to perform they will be prefixed by a number, like *TODO1*, *TODO2*, etc.
+If no number is used it is assumed to be the one and only step.
+If you want to resume a task from a certain step, you can using the **TODO** variable.
+The following example will generate the skeleton with the first *TODO* step resolved:
 
 ```shell
 

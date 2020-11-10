@@ -18,3 +18,5 @@ Japanese translation of [Linux Kernel Teaching](https://linux-kernel-labs.github
 
 * [デバッグ](/debugging.rst.md#デバッグ)
 
+* [学習の基本](/infrastructure.rst.md#学習の基本)
+
