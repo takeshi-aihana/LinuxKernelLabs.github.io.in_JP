@@ -772,4 +772,4 @@ Lockdep チェッカがチェックする安全ではないロックのもう一
 ---
 
 * [目次](/README.md#目次index)
-* [学習の基本](/infrastructure.rst.md#学習の基本)
+* [演習の仕方](/infrastructure.rst.md#演習の仕方)
