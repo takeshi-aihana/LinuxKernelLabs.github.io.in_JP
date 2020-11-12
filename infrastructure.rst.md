@@ -3,17 +3,16 @@
 
 ---
 
-## 学習の基本
+## 演習の仕方
 
-各章の学習を円滑に進めるために実践的な演習を用意しています。これらには一つまたは複数の課題を解決する方法について詳細で段階的なヒントが含まれています。
-特定の問題に焦点をあてるため、ほとんどの課題は既存の「スケルトン」ドライバ上で実行することになります。
-それぞれのスケルトン・ドライバは課題を終了するために入力する必要のあるセクションが明示されています。
-Each skeleton driver has clearly marked sections that needs to be filled in order to complete the tasks.
+各章の学習を円滑に進めるために実践的な演習を用意しています。これらは一つまたは複数の課題を解決する方法について詳細で段階的なヒントが含まれています。
+特定の問題に焦点をあてるため、ほとんどの課題は既存のドライバの「スケルトン」上で実行することになります。
+それぞれのドライバのスケルトンには課題を終了するために入力する必要のあるセクションが明示されています。
 
-これらのスケルトン・ドライバは *tools/labs/templates* ディレクトリの中にあるソースコードから生成します。
-課題を解決するためにスケルトン・ドライバのビルドから始めて、*tools/labs* の中にある **skels** を実行します。
+ドライバのスケルトンは *tools/labs/templates* ディレクトリの中にあるソースコードから生成します。
+まず課題を解決するためのドライバのスケルトンを生成するところから始めます。これは *tools/labs* の中で **skels** コマンドを実行します。
 ワークスペースをゴチャゴチャさせないようにするために一つの演習のスケルトンだけをビルドし、新しい演習を始める前にワークスペースをきれいすることを推奨します。
-**LABS** という変数を使って演習を選択できるようになっています：
+そして **LABS** という変数を使って演習を選択できるようになっています：
 
 ```bash
 
@@ -25,8 +24,8 @@ Each skeleton driver has clearly marked sections that needs to be filled in orde
    7-list-proc  8-kprobes  9-kdb
 
 ```
-   
-You can also use the same variable to generate skeletons for specific tasks:
+
+また、同じ変数を使用して特定のタスクのスケルトンをいくつか生成することも可能です：
 
 ```shell
 
@@ -35,21 +34,21 @@ You can also use the same variable to generate skeletons for specific tasks:
    tools/labs$ ls skels/kernel_modules
    6-cmd-mod  8-kprobes
 ```
-
+タスクごとに実行するステップが複数ありますが、通常は一つずつ増えていくようになっています。
 For each task you may have multiple steps to perform, usually incremental.
-These steps are marked in the source code as well as in the lab exercises with the keyword *TODO*.
-If we have multiple steps to perform they will be prefixed by a number, like *TODO1*, *TODO2*, etc.
-If no number is used it is assumed to be the one and only step.
-If you want to resume a task from a certain step, you can using the **TODO** variable.
-The following example will generate the skeleton with the first *TODO* step resolved:
+これらのステップは、ソースコードと課題の中で *TODO* というキーワードが付いています。
+もし実行するステップが複数ある場合は、 *TODO1*、*TODO2* などのようにキーワードに番号が付与されます。
+番号がない場合、それが単一のステップであることを意味しています。
+特定のステップから任意のステップをもう一度始めたい場合は **TODO** 変数を使います。
+次は、最初に完了した *TODO* のステップでスケルトンを生成する例です：
 
 ```shell
 
    tools/labs $ TODO=2 LABS="kernel_modules/8-kprobes" skels
 
 ```
-Once the skelton drivers are generated you can build them with the
-**build** make target:
+
+一度ドライバのスケルトンを生成したら ``make`` コマンドで **build** ターゲットを指定することで、それらのドライバをビルドできます：
 
 ```shell
 
@@ -66,8 +65,7 @@ Once the skelton drivers are generated you can build them with the
    make[1]: Leaving directory '/home/tavi/src/linux'
 ```
 
-To copy the drivers to the VM you can use either use ssh or update the
-VM image directly using the **copy** target:
+ビルドしたドライバを VM 環境へコピーするには、``ssh`` コマンドを使うか、**copy** ターゲットを指定して直接 VM 環境のイメージを更新します：
 
 ```shell
 
@@ -79,7 +77,8 @@ VM image directly using the **copy** target:
    
 ##### Attention
 
-The **copy** target will fail if the VM is running. This is intentional so that we avoid corrupting the filesystem.
+もし VM 環境が起動中だったら、**copy** ターゲットの実行は失敗します。
+お使いのファイルシステムをおかしくしないようにするために、意図的にこのようにしている点に注意して下さい。
 
 
 ---
