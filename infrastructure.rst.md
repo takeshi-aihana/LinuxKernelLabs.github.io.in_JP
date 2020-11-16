@@ -1,5 +1,5 @@
 * [目次](/README.md#目次index)
-*  [デバッグ](/debugging.rst.md#デバッグ)
+* [デバッグ](/debugging.rst.md#デバッグ)
 
 ---
 
@@ -35,7 +35,6 @@
    6-cmd-mod  8-kprobes
 ```
 タスクごとに実行するステップが複数ありますが、通常は一つずつ増えていくようになっています。
-For each task you may have multiple steps to perform, usually incremental.
 これらのステップは、ソースコードと課題の中で *TODO* というキーワードが付いています。
 もし実行するステップが複数ある場合は、 *TODO1*、*TODO2* などのようにキーワードに番号が付与されます。
 番号がない場合、それが単一のステップであることを意味しています。
@@ -84,4 +83,4 @@ For each task you may have multiple steps to perform, usually incremental.
 ---
 
 * [目次](/README.md#目次index)
-* [対称型マルチプロセッシング](/smp.rst.md#対称型マルチプロセッシング)
+* [序論](/introduction.rst.md#序論)
