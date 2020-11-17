@@ -26,18 +26,15 @@ The objectives of the laboratory are:
 
 * deepening the notions presented in the course
 * presentation of kernel programming interfaces (kernel API)
-* gaining documenting, development and debugging skills on a freestanding
-  environment
+* gaining documenting, development and debugging skills on a freestanding environment
 * acquiring knowledge and skills for drivers development
 
-A laboratory will present a set of concepts, applications and commands
-specific to a given problem. The lab will start with a presentation
-(each lab will have a set of slides) (15 minutes) and the remaining
-time will be allocated to the lab exercises (80 minutes).
+A laboratory will present a set of concepts, applications and commands specific to a given problem.
+The lab will start with a presentation (each lab will have a set of slides) (15 minutes) and the remaining time will be allocated to the lab exercises (80 minutes).
 
 For best laboratory performance, we recommend that you read the related slides.
-To fully understand a laboratory, we recommend going through the lab support. For
-in-depth study, use the supporting documentation.
+To fully understand a laboratory, we recommend going through the lab support.
+For in-depth study, use the supporting documentation.
 
 ### Documentation
 
@@ -58,30 +55,21 @@ in-depth study, use the supporting documentation.
 
 ### Source code navigation
 
-.. _cscope_intro:
-
 #### cscope
 
-`Cscope <http://cscope.sourceforge.net/>`__ is a tool for
-efficient navigation of C sources. To use it, a cscope database must
-be generated from the existing sources. In a Linux tree, the command
-:command:`make ARCH=x86 cscope` is sufficient. Specification of the
-architecture through the ARCH variable is optional but recommended;
-otherwise, some architecture dependent functions will appear multiple
-times in the database.
+`Cscope <http://cscope.sourceforge.net/>`__ is a tool for efficient navigation of C sources.
+To use it, a cscope database must be generated from the existing sources.
+In a Linux tree, the command :command:`make ARCH=x86 cscope` is sufficient.
+Specification of the architecture through the ARCH variable is optional but recommended;
+otherwise, some architecture dependent functions will appear multiple times in the database.
 
-You can build the cscope database with the command :command:`make
-ARCH=x86 COMPILED_SOURCE=1 cscope`. This way, the cscope database will
-only contain symbols that have already been used in the compile
-process before, thus resulting in better performance when searching
-for symbols.
+You can build the cscope database with the command ``make ARCH=x86 COMPILED_SOURCE=1 cscope``.
+This way, the cscope database will only contain symbols that have already been used in the compile process before, thus resulting in better performance when searching for symbols.
 
-Cscope can also be used as stand-alone, but it is more useful when
-combined with an editor. To use cscope with :command:`vim`, it is necessary to
-install both packages and add the following lines to the file
-:file:`.vimrc` (the machine in the lab already has the settings):
+Cscope can also be used as stand-alone, but it is more useful when combined with an editor.
+To use cscope with ``vim``, it is necessary to install both packages and add the following lines to the file ``.vimrc`` (the machine in the lab already has the settings):
 
-.. code-block:: vim
+```vim
 
     if has("cscope")
             " Look for a 'cscope.out' file starting from the current directory,
@@ -114,41 +102,36 @@ install both packages and add the following lines to the file
             " Open a quickfix window for the following queries.
             set cscopequickfix=s-,c-,d-,i-,t-,e-,g-
     endif
+```
 
-The script searches for a file called :file:`cscope.out` in the current directory, or
-in parent directories. If :command:`vim` finds this file, you can use the shortcut :code:`Ctrl +]`
-or :code:`Ctrl+\ g` (the combination control-\\ followed by g) to jump directly to
-the definition of the word under the cursor (function, variable, structure, etc.).
-Similarly, you can use :code:`Ctrl+\ s` to go where the word under the cursor is used.
+The script searches for a file called ``cscope.out`` in the current directory, or in parent directories.
+If ``vim`` finds this file, you can use the shortcut ``Ctrl +]`` or ``Ctrl+\ g`` (the combination control-\\ followed by g) to jump directly to the definition of the word under the cursor (function, variable, structure, etc.).
+Similarly, you can use ``Ctrl+\ s`` to go where the word under the cursor is used.
 
-You can take a cscope-enabled :file:`.vimrc` file (also contains other goodies) from
-https://github.com/ddvlad/cfg/blob/master/\_vimrc.
-The following guidelines are based on this file, but also show basic :command:`vim` commands
-that have the same effect.
+You can take a cscope-enabled ``.vimrc`` file (also contains other goodies) from https://github.com/ddvlad/cfg/blob/master/\_vimrc.
+The following guidelines are based on this file, but also show basic ``vim`` commands that have the same effect.
 
-If there are more than one results (usually there are) you can move between them
-using :code:`F6` and :code:`F5` (:code:`:ccnext`  and :code:`:cprev`).
-You can also open a new panel showing the results using :code:`:copen`. To close
-the panel, use the :code:`:cclose` command.
+If there are more than one results (usually there are) you can move between them using ``F6`` and ``F5`` (``:ccnext`` and ``:cprev``).
+You can also open a new panel showing the results using ``:copen``.
+To close the panel, use the ``:cclose`` command.
 
-To return to the previous location, use :code:`Ctrl+o` (o, not zero).
-The command can be used multiple times and works even if cscope changed the
-file you are currently editing.
+To return to the previous location, use ``Ctrl+o`` (o, not zero).
+The command can be used multiple times and works even if cscope changed the file you are currently editing.
 
-To go to a symbol definition directly when :command:`vim` starts, use :code:`vim -t <symbol_name>`
-(for example :code:`vim -t task_struct`). Otherwise, if you started :command:`vim` and want
-to search for a symbol by name, use :code:`cs find g <symbol_name>` (for example
-:code:`cs find g task_struct`).
+To go to a symbol definition directly when ``vim`` starts, use ``vim -t <symbol_name>`` (for example ``vim -t task_struct``).
+Otherwise, if you started ``vim`` and want to search for a symbol by name, use ``cs find g <symbol_name>`` (for example ``cs find g task_struct``).
 
-If you found more than one results and opened a panel showing all the matches
-(using :code:`:copen`) and you want to find a symbol of type structure,
-it is recommended to search in the results panel (using :code:`/` -- slash)
-the character :code:`{` (opening brace).
+If you found more than one results and opened a panel showing all the matches (using ``:copen``) and you want to find a symbol of type structure, it is recommended to search in the results panel (using ``/`` -- slash) the character ``{`` (opening brace).
 
-.. important::
-    You can get a summary of all the :command:`cscope` commands using :command:`:cs help`.
+---
 
-    For more info, use the :command:`vim` built-in help command: :command:`:h cscope` or :command:`:h copen`.
+##### Important
+
+You can get a summary of all the ``cscope`` commands using ``:cs help``.
+
+For more info, use the ``vim`` built-in help ``:h cscope`` or ``:h copen``.
+
+---
 
 If you use :command:`emacs`, install the :code:`xcscope-el` package and
 add the following lines in :file:`~/.emacs`.

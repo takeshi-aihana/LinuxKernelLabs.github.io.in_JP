@@ -73,12 +73,15 @@
    'skels/kernel_modules/8-kprobes/kprobes.ko' -> '/tmp/tmp.4UMKcISmQM/home/root/skels/kernel_modules/8-kprobes/kprobes.ko'
 
 ```
-   
+
+---
+
 ##### Attention
 
 もし VM 環境が起動中だったら、**copy** ターゲットの実行は失敗します。
 お使いのファイルシステムをおかしくしないようにするために、意図的にこのようにしている点に注意して下さい。
 
+---
 
 ---
 
